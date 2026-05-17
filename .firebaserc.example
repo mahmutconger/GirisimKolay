@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "default": "girisimkolay-staging",
+    "staging": "girisimkolay-staging",
+    "production": "girisimkolay-production"
+  }
+}
