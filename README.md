@@ -1,28 +1,35 @@
-Bu, Android ve iOS platformlarını hedefleyen bir Kotlin Multiplatform projesidir.
+This is a Kotlin Multiplatform project targeting Android, iOS.
 
-* **[/iosApp](https://www.google.com/search?q=./iosApp/iosApp)** bir iOS uygulaması içerir. Kullanıcı arayüzünüzü (UI) Compose Multiplatform ile paylaşıyor olsanız bile, iOS uygulamanız için bu giriş noktasına (entry point) ihtiyacınız vardır. Projeniz için SwiftUI kodunu eklemeniz gereken yer de burasıdır.
-* **[/sharedLogic](https://www.google.com/search?q=./sharedLogic/src)** projedeki uygulama hedefleri (targets) arasında paylaştırılacak kodlar içindir. En önemli alt klasör **[commonMain](https://www.google.com/search?q=./sharedLogic/src/commonMain/kotlin)** klasörüdür. Tercih ederseniz, buradaki platforma özel klasörlere de kod ekleyebilirsiniz.
-* **[/sharedUI](https://www.google.com/search?q=./sharedUI/src)** Compose Multiplatform uygulamalarınız arasında paylaşılacak kodlar içindir. Birkaç alt klasör içerir:
-* **[commonMain](https://www.google.com/search?q=./sharedUI/src/commonMain/kotlin)** tüm hedefler için ortak olan kodlar içindir.
-* Diğer klasörler, yalnızca klasör adında belirtilen platform için derlenecek Kotlin kodları içindir. Örneğin, Kotlin uygulamanızın iOS kısmı için Apple'ın CoreCrypto kütüphanesini kullanmak istiyorsanız, bu tür çağrılar için doğru yer **[iosMain](https://www.google.com/search?q=./sharedUI/src/iosMain/kotlin)** klasörüdür. Benzer şekilde, Masaüstü (JVM) uygulamasına özel kısmı düzenlemek istiyorsanız, **[jvmMain](https://www.google.com/search?q=./sharedUI/src/jvmMain/kotlin)** klasörü uygun konumdur.
+* [/iosApp](./iosApp/iosApp) contains an iOS application. Even if you’re sharing your UI with Compose Multiplatform,
+  you need this entry point for your iOS app. This is also where you should add SwiftUI code for your project.
 
+* [/sharedLogic](./sharedLogic/src) is for the code that will be shared between app targets in the project.
+  The most important subfolder is [commonMain](./sharedLogic/src/commonMain/kotlin). If preferred, you
+  can add code to the platform-specific folders here too.
 
+* [/sharedUI](./sharedUI/src) is for code that will be shared across your Compose Multiplatform applications.
+  It contains several subfolders:
+  - [commonMain](./sharedUI/src/commonMain/kotlin) is for code that’s common for all targets.
+  - Other folders are for Kotlin code that will be compiled for only the platform indicated in the folder name.
+    For example, if you want to use Apple’s CoreCrypto for the iOS part of your Kotlin app,
+    the [iosMain](./sharedUI/src/iosMain/kotlin) folder would be the right place for such calls.
+    Similarly, if you want to edit the Desktop (JVM) specific part, the [jvmMain](./sharedUI/src/jvmMain/kotlin)
+    folder is the appropriate location.
 
-### Uygulamaları çalıştırma
+### Running the apps
 
-IDE'nizin araç çubuğundaki çalıştırma widget'ı (run widget) tarafından sağlanan çalıştırma yapılandırmalarını (run configurations) kullanın. Ayrıca şu komutları ve seçenekleri de kullanabilirsiniz:
+Use the run configurations provided by the run widget in your IDE's toolbar. You can also use these commands and options:
 
-* **Android uygulaması:** `./gradlew :androidApp:assembleDebug`
-* **iOS uygulaması:** [/iosApp](https://www.google.com/search?q=./iosApp) dizinini Xcode'da açın ve oradan çalıştırın.
-* **Yerel arka uç (Backend) + Firebase emülatör yığını:** `make dev`
+- Android app: `./gradlew :androidApp:assembleDebug`
+- iOS app: open the [/iosApp](./iosApp) directory in Xcode and run it from there.
 
-### Testleri çalıştırma
+### Running tests
 
-IDE'nizin editör kenar boşluğundaki (gutter) çalıştırma butonunu kullanın veya testleri Gradle görevlerini (tasks) kullanarak çalıştırın:
+Use the run button in your IDE's editor gutter, or run tests using Gradle tasks:
 
-* **Android testleri:** `./gradlew :sharedUI:testAndroidHostTest :sharedLogic:testAndroidHostTest`
-* **iOS testleri:** `./gradlew :sharedLogic:iosSimulatorArm64Test`
+- Android tests: `./gradlew :sharedUI:testAndroidHostTest :sharedLogic:testAndroidHostTest`
+- iOS tests: `./gradlew :sharedLogic:iosSimulatorArm64Test`
 
 ---
 
-[Kotlin Multiplatform]() hakkında daha fazla bilgi edinin…
+Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)…

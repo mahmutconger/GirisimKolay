@@ -1,33 +1,53 @@
 import SwiftUI
-import SharedLogic
 
 struct ContentView: View {
-    @State private var showContent = false
+    @EnvironmentObject var authState: AuthStateManager
+    
     var body: some View {
-        VStack {
-            Button("Click me!") {
-                withAnimation {
-                    showContent = !showContent
-                }
-            }
-
-            if showContent {
-                VStack(spacing: 16) {
-                    Image(systemName: "swift")
-                        .font(.system(size: 200))
-                        .foregroundColor(.accentColor)
-                    Text("SwiftUI: \(Greeting().greet())")
-                }
-                .transition(.move(edge: .top).combined(with: .opacity))
+        Group {
+            if authState.isSignedIn {
+                MainTabView()
+            } else {
+                LoginScreen()
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .padding()
+        .animation(.easeInOut, value: authState.isSignedIn)
     }
 }
 
-struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView()
+struct MainTabView: View {
+    var body: some View {
+        TabView {
+            AIProfileChatScreen()
+                .tabItem {
+                    Label("AI Danışman", systemImage: "bubble.left.and.bubble.right.fill")
+                }
+            
+            DashboardNewsFeedScreen()
+                .tabItem {
+                    Label("Dashboard", systemImage: "squareshape.split.2x2.fill")
+                }
+            
+            BusinessCalendarScreen()
+                .tabItem {
+                    Label("Takvim", systemImage: "calendar")
+                }
+            
+            AnalyticsDashboardScreen()
+                .tabItem {
+                    Label("Analiz", systemImage: "chart.pie.fill")
+                }
+            
+            CommunityHubScreen()
+                .tabItem {
+                    Label("Topluluk", systemImage: "person.3.fill")
+                }
+            
+            RoadmapDocumentCenterScreen()
+                .tabItem {
+                    Label("Yol Haritası", systemImage: "map.fill")
+                }
+        }
+        .tint(.blue)
     }
 }

@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Required for Ktor HTTP calls -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Allows HTTP (non-TLS) connections to local dev backend on 10.0.2.2 -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
     <application
+        android:name=".GirisimKolayApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
