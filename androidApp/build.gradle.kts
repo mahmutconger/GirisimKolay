@@ -27,11 +27,6 @@ dependencies {
     implementation(libs.koin.android)
     implementation(libs.koin.androidx.compose)
 
-    // Ktor (for AppModule.kt which references HttpClient directly)
-    implementation(libs.ktor.client.android)
-    implementation(libs.ktor.client.core)
-    implementation(libs.ktor.client.logging)
-
     // Navigation
     implementation(libs.androidx.navigation.compose)
 
@@ -44,12 +39,14 @@ dependencies {
     implementation(libs.firebase.functions)
     implementation(libs.firebase.storage)
     implementation(libs.coil.compose)
+    implementation(libs.kotlinx.coroutines.play.services)
 
     implementation(libs.compose.uiToolingPreview)
     debugImplementation(libs.compose.uiTooling)
 }
 
 android {
+    val useFirebaseEmulators = providers.gradleProperty("useFirebaseEmulators").orElse("false").get()
     namespace = "com.anlarsinsoftware.girisimkolay"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
@@ -68,19 +65,16 @@ android {
     buildTypes {
         getByName("release") {
             isMinifyEnabled = false
-            buildConfigField("String", "BASE_URL", "\"https://api.girisimkolay.com\"")
             buildConfigField("String", "APP_ENVIRONMENT", "\"production\"")
             buildConfigField("boolean", "USE_FIREBASE_EMULATORS", "false")
         }
         getByName("debug") {
-            buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:8000\"")
             buildConfigField("String", "APP_ENVIRONMENT", "\"development\"")
-            buildConfigField("boolean", "USE_FIREBASE_EMULATORS", "true")
+            buildConfigField("boolean", "USE_FIREBASE_EMULATORS", useFirebaseEmulators)
         }
         create("staging") {
             initWith(getByName("debug"))
             matchingFallbacks += listOf("debug")
-            buildConfigField("String", "BASE_URL", "\"https://staging-api.girisimkolay.com\"")
             buildConfigField("String", "APP_ENVIRONMENT", "\"staging\"")
             buildConfigField("boolean", "USE_FIREBASE_EMULATORS", "false")
         }

@@ -18,9 +18,9 @@ koin = "3.5.6"
 coroutines = "1.8.0"
 serialization = "1.6.3"
 androidx-navigation = "2.7.7"
-firebase-bom = "33.1.0"
-google-services = "4.4.2"
-firebase-crashlytics-gradle = "3.0.2"
+firebase-bom = "34.13.0"
+google-services = "4.4.4"
+firebase-crashlytics-gradle = "3.0.7"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -47,6 +47,7 @@ compose-uiToolingPreview = { module = "org.jetbrains.compose.ui:ui-tooling-previ
 # Coroutines
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
+kotlinx-coroutines-play-services = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-play-services", version.ref = "coroutines" }
 
 # Serialization
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
@@ -66,12 +67,12 @@ koin-androidx-compose = { module = "io.insert-koin:koin-androidx-compose", versi
 
 # Firebase (version managed by BOM — no version needed on individual libs)
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebase-bom" }
-firebase-auth = { module = "com.google.firebase:firebase-auth-ktx" }
-firebase-firestore = { module = "com.google.firebase:firebase-firestore-ktx" }
-firebase-crashlytics = { module = "com.google.firebase:firebase-crashlytics-ktx" }
-firebase-analytics = { module = "com.google.firebase:firebase-analytics-ktx" }
-firebase-functions = { module = "com.google.firebase:firebase-functions-ktx" }
-firebase-storage = { module = "com.google.firebase:firebase-storage-ktx" }
+firebase-auth = { module = "com.google.firebase:firebase-auth" }
+firebase-firestore = { module = "com.google.firebase:firebase-firestore" }
+firebase-crashlytics = { module = "com.google.firebase:firebase-crashlytics" }
+firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
+firebase-functions = { module = "com.google.firebase:firebase-functions" }
+firebase-storage = { module = "com.google.firebase:firebase-storage" }
 coil-compose = { module = "io.coil-kt:coil-compose", version = "2.6.0" }
 
 [plugins]
