@@ -5,6 +5,7 @@ import com.anlarsinsoftware.girisimkolay.chat.data.dto.ChatResponse
 import com.anlarsinsoftware.girisimkolay.chat.data.dto.ChatResponseMessageDto
 import com.anlarsinsoftware.girisimkolay.chat.data.dto.CitationDto
 import com.anlarsinsoftware.girisimkolay.chat.data.dto.ProfilingSnapshotDto
+import com.anlarsinsoftware.girisimkolay.chat.domain.entity.ChatMode
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.functions.FirebaseFunctions
 import kotlinx.coroutines.tasks.await
@@ -16,7 +17,8 @@ class FirebaseFunctionsChatDataSource(
     suspend fun sendMessage(
         sessionId: String?,
         text: String,
-        clientRequestId: String
+        clientRequestId: String,
+        mode: ChatMode
     ): ChatResponse {
         Log.i(
             "FirebaseFunctionsChat",
@@ -34,7 +36,8 @@ class FirebaseFunctionsChatDataSource(
         val payload = mapOf(
             "sessionId" to sessionId,
             "text" to text,
-            "clientRequestId" to clientRequestId
+            "clientRequestId" to clientRequestId,
+            "mode" to mode.wireValue
         )
         return try {
             Log.d("FirebaseFunctionsChat", "Attempting HTTPS callable: sendChatMessage")
@@ -73,7 +76,8 @@ private fun Map<*, *>.toChatMessageDto(): ChatResponseMessageDto = ChatResponseM
     citations = (this["citations"] as? List<*>)?.mapNotNull { (it as? Map<*, *>)?.toCitationDto() }.orEmpty(),
     profileDelta = (this["profileDelta"] as? Map<*, *>)?.toProfileDto(),
     confidence = (this["confidence"] as? Number)?.toDouble(),
-    nextActions = (this["nextActions"] as? List<*>)?.mapNotNull { it as? String }.orEmpty()
+    nextActions = (this["nextActions"] as? List<*>)?.mapNotNull { it as? String }.orEmpty(),
+    mode = this["mode"] as? String ?: "NORMAL"
 )
 
 private fun Map<*, *>.toCitationDto(): CitationDto = CitationDto(

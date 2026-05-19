@@ -2,6 +2,7 @@ package com.anlarsinsoftware.girisimkolay.chat.data
 
 import android.util.Log
 import com.anlarsinsoftware.girisimkolay.chat.domain.entity.ChatMessage
+import com.anlarsinsoftware.girisimkolay.chat.domain.entity.ChatMode
 import com.anlarsinsoftware.girisimkolay.chat.domain.repository.ChatRepository
 import com.anlarsinsoftware.girisimkolay.core.domain.Clock
 import com.anlarsinsoftware.girisimkolay.core.domain.DefaultClock
@@ -59,8 +60,8 @@ class FirebaseChatRepository(
         }
     }
 
-    override suspend fun sendMessage(text: String): Result<ChatMessage> {
-        Log.i("FirebaseChatRepository", "sendMessage started.")
+    override suspend fun sendMessage(text: String, mode: ChatMode): Result<ChatMessage> {
+        Log.i("FirebaseChatRepository", "sendMessage started. mode=${mode.wireValue}")
         val uid = auth.currentUser?.uid
             ?: return Result.Error(message = "Mesaj göndermek için giriş yapmalısınız.", code = "unauthenticated")
         val trimmed = text.trim()
@@ -73,7 +74,8 @@ class FirebaseChatRepository(
             sessionId = activeSessionId.value ?: "pending",
             text = trimmed,
             isFromUser = true,
-            timestamp = clock.nowMillis()
+            timestamp = clock.nowMillis(),
+            mode = mode
         )
         chatHistory.value = chatHistory.value + optimistic
         isTyping.value = true
@@ -82,7 +84,8 @@ class FirebaseChatRepository(
             val response = functionsDataSource.sendMessage(
                 sessionId = activeSessionId.value,
                 text = trimmed,
-                clientRequestId = idProvider.randomId()
+                clientRequestId = idProvider.randomId(),
+                mode = mode
             )
             Log.i("FirebaseChatRepository", "Functions response received for session ${response.sessionId}.")
             activeSessionId.value = response.sessionId
@@ -100,7 +103,8 @@ class FirebaseChatRepository(
                 sessionId = activeSessionId.value ?: "error",
                 text = "Şu anda danışmana ulaşılamıyor. Lütfen tekrar deneyin.",
                 isFromUser = false,
-                timestamp = clock.nowMillis()
+                timestamp = clock.nowMillis(),
+                mode = mode
             )
             Result.Error(
                 message = "AI danışmanına ulaşılamadı.",
@@ -137,5 +141,6 @@ private fun com.anlarsinsoftware.girisimkolay.chat.data.dto.ChatResponseMessageD
         )
     },
     confidence = confidence,
-    nextActions = nextActions
+    nextActions = nextActions,
+    mode = ChatMode.fromWireValue(mode)
 )

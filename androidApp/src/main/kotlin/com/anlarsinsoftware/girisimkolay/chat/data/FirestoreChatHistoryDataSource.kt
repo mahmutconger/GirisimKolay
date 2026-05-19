@@ -1,6 +1,7 @@
 package com.anlarsinsoftware.girisimkolay.chat.data
 
 import com.anlarsinsoftware.girisimkolay.chat.domain.entity.ChatMessage
+import com.anlarsinsoftware.girisimkolay.chat.domain.entity.ChatMode
 import com.anlarsinsoftware.girisimkolay.chat.domain.entity.Citation
 import com.anlarsinsoftware.girisimkolay.profile.domain.entity.ProfilingSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
@@ -38,7 +39,8 @@ class FirestoreChatHistoryDataSource(
                         .orEmpty(),
                     profileDelta = (document.get("profileDelta") as? Map<String, Any?>)?.toProfilingSnapshot(),
                     confidence = document.getDouble("confidence"),
-                    nextActions = (document.get("nextActions") as? List<*>)?.mapNotNull { it as? String }.orEmpty()
+                    nextActions = (document.get("nextActions") as? List<*>)?.mapNotNull { it as? String }.orEmpty(),
+                    mode = ChatMode.fromWireValue(document.getString("mode"))
                 )
             }
     }
