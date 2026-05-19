@@ -3,8 +3,9 @@ package com.anlarsinsoftware.girisimkolay.chat.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.anlarsinsoftware.girisimkolay.chat.domain.entity.Message
 import com.anlarsinsoftware.girisimkolay.chat.domain.entity.ChatMode
+import com.anlarsinsoftware.girisimkolay.chat.domain.entity.ChatSessionSummary
+import com.anlarsinsoftware.girisimkolay.chat.domain.entity.Message
 import com.anlarsinsoftware.girisimkolay.chat.domain.repository.ChatRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -27,8 +28,13 @@ class ChatViewModel(
     val isTyping: StateFlow<Boolean> = chatRepository.getTypingStatus()
         .stateIn(viewModelScope, SharingStarted.Lazily, false)
 
+    val recentSessions: StateFlow<List<ChatSessionSummary>> = chatRepository.listRecentSessions()
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
     private val _selectedMode = MutableStateFlow(ChatMode.NORMAL)
     val selectedMode: StateFlow<ChatMode> = _selectedMode.asStateFlow()
+
+    val currentUserName: String? get() = chatRepository.getCurrentUserDisplayName()
 
     init {
         viewModelScope.launch {
@@ -47,5 +53,15 @@ class ChatViewModel(
 
     fun selectMode(mode: ChatMode) {
         _selectedMode.value = mode
+    }
+
+    fun switchSession(sessionId: String) {
+        viewModelScope.launch {
+            chatRepository.switchSession(sessionId)
+        }
+    }
+
+    fun startNewSession() {
+        chatRepository.startNewSession()
     }
 }

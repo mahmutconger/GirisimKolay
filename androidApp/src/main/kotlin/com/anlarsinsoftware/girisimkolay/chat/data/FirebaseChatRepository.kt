@@ -3,6 +3,7 @@ package com.anlarsinsoftware.girisimkolay.chat.data
 import android.util.Log
 import com.anlarsinsoftware.girisimkolay.chat.domain.entity.ChatMessage
 import com.anlarsinsoftware.girisimkolay.chat.domain.entity.ChatMode
+import com.anlarsinsoftware.girisimkolay.chat.domain.entity.ChatSessionSummary
 import com.anlarsinsoftware.girisimkolay.chat.domain.repository.ChatRepository
 import com.anlarsinsoftware.girisimkolay.core.domain.Clock
 import com.anlarsinsoftware.girisimkolay.core.domain.DefaultClock
@@ -21,6 +22,7 @@ class FirebaseChatRepository(
     private val auth: FirebaseAuth,
     private val functionsDataSource: FirebaseFunctionsChatDataSource,
     private val historyDataSource: FirestoreChatHistoryDataSource,
+    private val sessionsDataSource: FirestoreChatSessionsDataSource,
     private val sessionStateStore: SessionStateStore,
     private val clock: Clock = DefaultClock,
     private val idProvider: IdProvider = DefaultIdProvider,
@@ -33,6 +35,7 @@ class FirebaseChatRepository(
     private val chatHistory = MutableStateFlow<List<ChatMessage>>(emptyList())
     private val isTyping = MutableStateFlow(false)
     private val activeSessionId = MutableStateFlow(sessionStateStore.getActiveSessionId())
+    private val _recentSessions = MutableStateFlow<List<ChatSessionSummary>>(emptyList())
 
     override fun getChatHistory(): Flow<List<ChatMessage>> = chatHistory.asStateFlow()
 
@@ -42,12 +45,34 @@ class FirebaseChatRepository(
 
     override fun getTypingStatus(): Flow<Boolean> = isTyping.asStateFlow()
 
+    override fun listRecentSessions(): Flow<List<ChatSessionSummary>> = _recentSessions.asStateFlow()
+
+    override fun getCurrentUserDisplayName(): String? = auth.currentUser?.displayName
+
+    override suspend fun switchSession(sessionId: String) {
+        activeSessionId.value = sessionId
+        sessionStateStore.saveActiveSessionId(sessionId)
+        chatHistory.value = emptyList()
+        refreshChatHistory()
+    }
+
+    override fun startNewSession() {
+        activeSessionId.value = null
+        sessionStateStore.clear()
+        chatHistory.value = emptyList()
+    }
+
     override suspend fun refreshChatHistory(): Result<List<ChatMessage>> {
         val uid = auth.currentUser?.uid ?: return Result.Success(chatHistory.value)
         val sessionId = activeSessionId.value ?: return Result.Success(chatHistory.value)
         return try {
             val messages = historyDataSource.loadMessages(uid = uid, sessionId = sessionId)
             chatHistory.value = messages
+            try {
+                _recentSessions.value = sessionsDataSource.loadRecentSessions(uid)
+            } catch (e: Exception) {
+                logger.error("FirebaseChatRepository", "Session list refresh failed", e)
+            }
             Result.Success(messages)
         } catch (exception: Exception) {
             logger.error("FirebaseChatRepository", "Chat history refresh failed", exception)

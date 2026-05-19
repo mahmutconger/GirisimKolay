@@ -21,10 +21,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FlightTakeoff
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Search
@@ -37,22 +43,27 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.anlarsinsoftware.girisimkolay.chat.domain.entity.ChatMode
+import com.anlarsinsoftware.girisimkolay.chat.domain.entity.ChatSessionSummary
+import com.anlarsinsoftware.girisimkolay.chat.domain.entity.Citation
 import com.anlarsinsoftware.girisimkolay.chat.domain.entity.Message
 import com.anlarsinsoftware.girisimkolay.chat.viewmodel.ChatViewModel
-import com.anlarsinsoftware.girisimkolay.ui.theme.NavyPrimary
-import com.anlarsinsoftware.girisimkolay.ui.theme.NavyPrimaryContainer
 import com.anlarsinsoftware.girisimkolay.ui.theme.EmeraldSecondary
 import com.anlarsinsoftware.girisimkolay.ui.theme.EmeraldSecondaryContainer
+import com.anlarsinsoftware.girisimkolay.ui.theme.NavyPrimary
+import com.anlarsinsoftware.girisimkolay.ui.theme.NavyPrimaryContainer
 import com.anlarsinsoftware.girisimkolay.ui.theme.OnEmeraldSecondaryContainer
+import com.anlarsinsoftware.girisimkolay.ui.theme.OnSurfaceVariant
 import com.anlarsinsoftware.girisimkolay.ui.theme.OutlineVariant
+import com.anlarsinsoftware.girisimkolay.ui.theme.PurpleAccent
 import com.anlarsinsoftware.girisimkolay.ui.theme.SurfaceContainerLow
 import com.anlarsinsoftware.girisimkolay.ui.theme.SurfaceContainerLowest
-import com.anlarsinsoftware.girisimkolay.ui.theme.OnSurfaceVariant
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
@@ -69,95 +80,115 @@ fun AIProfileChatScreen(
     val messages by viewModel.messages.collectAsState()
     val isTyping by viewModel.isTyping.collectAsState()
     val selectedMode by viewModel.selectedMode.collectAsState()
+    val recentSessions by viewModel.recentSessions.collectAsState()
     var inputText by remember { mutableStateOf("") }
     val showWelcome = messages.size <= 1 && messages.none { it.isFromUser }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val currentUserName = viewModel.currentUserName
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        AsyncImage(
-                            model = "https://lh3.googleusercontent.com/aida-public/AB6AXuBYAeElu_rlgVvFeMIqEgJrugYN2kGXI86NvtpjudXEthTFK9ieBP7cEQfygoE7sYp14DmT_u9EacHu0DF8fhLS4gJNwmuhWyfp85utZmbYjiI529WqjJm_hdw1rDfzHYoYcKmzWmcfUoYf5SGmT5IbfD5Ta5wzifuOriwEVED9b0GDKYfpTzczTNofT2aFzJoNhTQ2Q0YU9k5gkfJa--s5QGd2aInz1OurUhZMqsPKSosb_cpjhFnlWLWzcsM0UIifml2_YS5NXuY",
-                            contentDescription = "Profil",
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .border(1.dp, OutlineVariant, CircleShape)
-                        )
-                        Column {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ChatDrawerContent(
+                sessions = recentSessions,
+                currentUserName = currentUserName,
+                onSessionClick = { session ->
+                    viewModel.switchSession(session.id)
+                    scope.launch { drawerState.close() }
+                },
+                onNewChat = {
+                    viewModel.startNewSession()
+                    scope.launch { drawerState.close() }
+                },
+                onClose = { scope.launch { drawerState.close() } }
+            )
+        }
+    ) {
+        Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .background(EmeraldSecondaryContainer, CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.AutoAwesome,
+                                    contentDescription = null,
+                                    tint = OnEmeraldSecondaryContainer,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            Column {
                                 Text(
                                     "Girişim Asistanı",
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = NavyPrimary
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Kurumsal danışman", fontSize = 12.sp, color = OnSurfaceVariant)
+                                Text("Kurumsal danışman", fontSize = 11.sp, color = OnSurfaceVariant)
                             }
                         }
+                    },
+                    navigationIcon = {
+                        Row {
+                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                Icon(Icons.Default.Menu, contentDescription = "Menü")
+                            }
+                            IconButton(onClick = onNavigateBack) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri")
+                            }
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = onNavigateToNotifications) {
+                            Icon(
+                                Icons.Default.Notifications,
+                                contentDescription = "Bildirimler",
+                                tint = OnSurfaceVariant
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                )
+            },
+            bottomBar = {
+                ChatInputBar(
+                    inputText = inputText,
+                    selectedMode = selectedMode,
+                    onModeSelected = viewModel::selectMode,
+                    onTextChange = { inputText = it },
+                    onAddAttachment = {
+                        scope.launch {
+                            snackbarHostState.showSnackbar("Belge yükleme özelliği Android dosya seçiciye bağlanmak üzere hazır.")
+                        }
+                    },
+                    onSend = {
+                        if (inputText.isNotBlank()) {
+                            viewModel.sendMessage(inputText)
+                            inputText = ""
+                        }
                     }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = onNavigateToNotifications) {
-                        Icon(
-                            Icons.Default.Notifications,
-                            contentDescription = "Bildirimler",
-                            tint = OnSurfaceVariant
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
-            )
-        },
-        bottomBar = {
-            ChatInputBar(
-                inputText = inputText,
-                onTextChange = { inputText = it },
-                onAddAttachment = {
-                    scope.launch {
-                        snackbarHostState.showSnackbar("Belge yükleme özelliği Android dosya seçiciye bağlanmak üzere hazır.")
-                    }
-                },
-                onSend = {
-                    if (inputText.isNotBlank()) {
-                        viewModel.sendMessage(inputText)
-                        inputText = ""
-                    }
-                }
-            )
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .background(Color(0xFFFBF9FB))
-        ) {
-            ChatModeSelector(
-                selectedMode = selectedMode,
-                onModeSelected = viewModel::selectMode
-            )
-
+                )
+            }
+        ) { padding ->
             LazyColumn(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(horizontal = 20.dp),
+                    .fillMaxSize()
+                    .padding(padding)
+                    .background(Color(0xFFFBF9FB))
+                    .padding(horizontal = 16.dp),
                 contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 if (showWelcome) {
                     item {
@@ -165,9 +196,13 @@ fun AIProfileChatScreen(
                     }
                 }
 
-                items(messages) { message ->
+                items(
+                    items = messages.sortedBy { it.timestamp },
+                    key = { it.id }
+                ) { message ->
                     MessageBubble(
                         message = message,
+                        displayName = currentUserName ?: "Sen",
                         onActionClick = { action ->
                             when {
                                 action.contains("Rapor", ignoreCase = true) -> onNavigateToRoadmap()
@@ -176,8 +211,8 @@ fun AIProfileChatScreen(
                                 else -> scope.launch { snackbarHostState.showSnackbar(action) }
                             }
                         },
-                        onCitationClick = { source ->
-                            scope.launch { snackbarHostState.showSnackbar("Kaynak: $source") }
+                        onCitationMissingUrl = {
+                            scope.launch { snackbarHostState.showSnackbar("Bu kaynak için bağlantı bulunamadı.") }
                         }
                     )
                 }
@@ -193,41 +228,56 @@ fun AIProfileChatScreen(
 }
 
 @Composable
-private fun ChatModeSelector(
+private fun ChatModePicker(
     selectedMode: ChatMode,
     onModeSelected: (ChatMode) -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color.White)
-            .padding(horizontal = 20.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        ChatMode.entries.forEach { mode ->
-            FilterChip(
-                modifier = Modifier.weight(1f),
-                selected = selectedMode == mode,
-                onClick = { onModeSelected(mode) },
-                label = {
-                    Text(
-                        text = mode.displayName,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1
-                    )
-                },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = NavyPrimaryContainer,
-                    selectedLabelColor = NavyPrimary
-                ),
-                border = FilterChipDefaults.filterChipBorder(
-                    enabled = true,
-                    selected = selectedMode == mode,
-                    borderColor = OutlineVariant,
-                    selectedBorderColor = NavyPrimary
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        Surface(
+            onClick = { expanded = true },
+            shape = RoundedCornerShape(8.dp),
+            color = NavyPrimaryContainer.copy(alpha = 0.15f),
+            border = BorderStroke(1.dp, NavyPrimary.copy(alpha = 0.3f))
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = selectedMode.displayName,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = NavyPrimary
                 )
-            )
+                Icon(
+                    Icons.Default.ExpandMore,
+                    contentDescription = "Mod seç",
+                    tint = NavyPrimary,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            ChatMode.entries.forEach { mode ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = mode.displayName,
+                            fontWeight = if (mode == selectedMode) FontWeight.Bold else FontWeight.Normal,
+                            color = if (mode == selectedMode) NavyPrimary else MaterialTheme.colorScheme.onSurface
+                        )
+                    },
+                    onClick = {
+                        onModeSelected(mode)
+                        expanded = false
+                    }
+                )
+            }
         }
     }
 }
@@ -274,159 +324,282 @@ fun WelcomeStateView() {
 }
 
 @Composable
-fun MessageBubble(
-    message: Message,
-    onActionClick: (String) -> Unit,
-    onCitationClick: (String) -> Unit
+fun ChatDrawerContent(
+    sessions: List<ChatSessionSummary>,
+    currentUserName: String?,
+    onSessionClick: (ChatSessionSummary) -> Unit,
+    onNewChat: () -> Unit,
+    onClose: () -> Unit
 ) {
-    if (message.isFromUser) {
-        // User bubble
-        Box(
-            modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.CenterEnd
+    ModalDrawerSheet(modifier = Modifier.width(300.dp)) {
+        // Header
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(16.dp, 16.dp, 4.dp, 16.dp))
-                    .background(NavyPrimary)
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
-                    .widthIn(max = 290.dp)
-            ) {
-                Text(
-                    text = message.text,
-                    color = Color.White,
-                    fontSize = 15.sp,
-                    lineHeight = 22.sp
-                )
+            Text(
+                "GirişimKolay",
+                fontWeight = FontWeight.Bold,
+                color = NavyPrimary,
+                fontSize = 18.sp
+            )
+            IconButton(onClick = onClose) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kapat")
             }
         }
-    } else {
-        // AI bubble with Avatar on left, custom formatted Card on right
+
+        // Yeni sohbet butonu
+        Button(
+            onClick = onNewChat,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary),
+            shape = RoundedCornerShape(10.dp)
+        ) {
+            Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Yeni Sohbet")
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // Menü öğesi
+        NavigationDrawerItem(
+            label = { Text("Girişim Asistanı", fontWeight = FontWeight.SemiBold) },
+            selected = true,
+            onClick = onClose,
+            icon = { Icon(Icons.Default.AutoAwesome, contentDescription = null) },
+            modifier = Modifier.padding(horizontal = 8.dp)
+        )
+
+        // Son sohbetler
+        if (sessions.isNotEmpty()) {
+            Text(
+                "SON SOHBETLER",
+                modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = OnSurfaceVariant,
+                letterSpacing = 0.8.sp
+            )
+            sessions.forEach { session ->
+                NavigationDrawerItem(
+                    label = {
+                        Text(
+                            session.title,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            fontSize = 14.sp
+                        )
+                    },
+                    selected = false,
+                    onClick = { onSessionClick(session) },
+                    icon = {
+                        Icon(
+                            Icons.Default.Description,
+                            contentDescription = null,
+                            tint = OnSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    },
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                )
+            }
+        } else {
+            Text(
+                "Henüz sohbet geçmişi yok.",
+                modifier = Modifier.padding(start = 16.dp, top = 16.dp),
+                fontSize = 13.sp,
+                color = OnSurfaceVariant
+            )
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        // Alt kullanıcı alanı
+        HorizontalDivider()
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.padding(16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.Top
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(32.dp)
-                    .background(EmeraldSecondaryContainer, CircleShape),
+                    .size(36.dp)
+                    .background(NavyPrimary, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
+                Text(
+                    currentUserName?.firstOrNull()?.uppercase() ?: "G",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
+            }
+            Text(
+                currentUserName ?: "Girişimci",
+                fontWeight = FontWeight.SemiBold,
+                color = NavyPrimary,
+                fontSize = 14.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+fun MessageBubble(
+    message: Message,
+    displayName: String = "Sen",
+    onActionClick: (String) -> Unit,
+    onCitationMissingUrl: () -> Unit = {}
+) {
+    // Both user and AI messages: left-aligned with avatar + name header
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        // Avatar
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .background(
+                    if (message.isFromUser) NavyPrimary else EmeraldSecondaryContainer,
+                    CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            if (message.isFromUser) {
+                Text(
+                    displayName.firstOrNull()?.uppercase() ?: "S",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp
+                )
+            } else {
                 Icon(
-                    Icons.Default.SmartToy,
+                    Icons.Default.AutoAwesome,
                     contentDescription = null,
                     tint = OnEmeraldSecondaryContainer,
                     modifier = Modifier.size(18.dp)
                 )
             }
+        }
 
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            // Name header
+            Text(
+                if (message.isFromUser) displayName else "Girişim Asistanı",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = if (message.isFromUser) NavyPrimary else OnEmeraldSecondaryContainer
+            )
+
+            // Message card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (message.isFromUser) NavyPrimary.copy(alpha = 0.06f) else Color.White
+                ),
+                border = BorderStroke(
+                    1.dp,
+                    if (message.isFromUser) NavyPrimary.copy(alpha = 0.12f) else OutlineVariant.copy(alpha = 0.5f)
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    border = BorderStroke(1.dp, OutlineVariant.copy(alpha = 0.5f)),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        // Render based on templates
-                        when {
-                            message.text.startsWith("[KOSGEB_TEMPLATE]") -> {
-                                val cleanText = message.text.removePrefix("[KOSGEB_TEMPLATE]")
-                                KosgebTemplateContent(cleanText)
-                            }
-                            message.text.startsWith("[BLOCKCHAIN_TEMPLATE]") -> {
-                                val cleanText = message.text.removePrefix("[BLOCKCHAIN_TEMPLATE]")
-                                BlockchainTemplateContent(cleanText)
-                            }
-                            message.text.startsWith("[SGK_TEMPLATE]") -> {
-                                val cleanText = message.text.removePrefix("[SGK_TEMPLATE]")
-                                SgkTemplateContent(cleanText)
-                            }
-                            message.text.startsWith("[VERGI_TEMPLATE]") -> {
-                                val cleanText = message.text.removePrefix("[VERGI_TEMPLATE]")
-                                VergiTemplateContent(cleanText)
-                            }
-                            else -> {
-                                // Default response text
-                                Text(
-                                    text = message.text,
-                                    color = Color.Black,
-                                    fontSize = 15.sp,
-                                    lineHeight = 22.sp
-                                )
+                Column(modifier = Modifier.padding(14.dp)) {
+                    when {
+                        message.text.startsWith("[KOSGEB_TEMPLATE]") -> {
+                            val cleanText = message.text.removePrefix("[KOSGEB_TEMPLATE]")
+                            KosgebTemplateContent(cleanText)
+                        }
+                        message.text.startsWith("[BLOCKCHAIN_TEMPLATE]") -> {
+                            val cleanText = message.text.removePrefix("[BLOCKCHAIN_TEMPLATE]")
+                            BlockchainTemplateContent(cleanText)
+                        }
+                        message.text.startsWith("[SGK_TEMPLATE]") -> {
+                            val cleanText = message.text.removePrefix("[SGK_TEMPLATE]")
+                            SgkTemplateContent(cleanText)
+                        }
+                        message.text.startsWith("[VERGI_TEMPLATE]") -> {
+                            val cleanText = message.text.removePrefix("[VERGI_TEMPLATE]")
+                            VergiTemplateContent(cleanText)
+                        }
+                        else -> {
+                            Text(
+                                text = message.text,
+                                color = if (message.isFromUser) NavyPrimary else Color.Black,
+                                fontSize = 15.sp,
+                                lineHeight = 22.sp
+                            )
 
-                                if (message.sources.isNotEmpty()) {
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    message.sources.forEach { sourceName ->
-                                        CitationBadge(sourceName, onClick = { onCitationClick(sourceName) })
-                                    }
+                            if (message.citations.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(10.dp))
+                                message.citations.forEach { citation ->
+                                    CitationBadge(citation, onMissingUrl = onCitationMissingUrl)
                                 }
                             }
                         }
                     }
                 }
+            }
 
-                // Action buttons row below message card
-                if (message.nextActions.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        message.nextActions.forEachIndexed { index, actionText ->
-                            val isPrimary = index == 0
-                            val buttonIcon = when {
-                                actionText.contains("Rapor", ignoreCase = true) -> Icons.Default.Description
-                                actionText.contains("Uzman", ignoreCase = true) -> Icons.Default.SupportAgent
-                                actionText.contains("Detay", ignoreCase = true) -> Icons.Default.Search
-                                else -> null
+            // Action buttons row below message card
+            if (message.nextActions.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    message.nextActions.forEachIndexed { index, actionText ->
+                        val isPrimary = index == 0
+                        val buttonIcon = when {
+                            actionText.contains("Rapor", ignoreCase = true) -> Icons.Default.Description
+                            actionText.contains("Uzman", ignoreCase = true) -> Icons.Default.SupportAgent
+                            actionText.contains("Detay", ignoreCase = true) -> Icons.Default.Search
+                            else -> null
+                        }
+
+                        if (isPrimary) {
+                            Button(
+                                onClick = { onActionClick(actionText) },
+                                colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary),
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                if (buttonIcon != null) {
+                                    Icon(buttonIcon, contentDescription = null, modifier = Modifier.size(14.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                }
+                                Text(actionText, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                             }
-
-                            if (isPrimary) {
-                                Button(
-                                    onClick = { onActionClick(actionText) },
-                                    colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary),
-                                    shape = RoundedCornerShape(8.dp),
-                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.Center
-                                    ) {
-                                        if (buttonIcon != null) {
-                                            Icon(buttonIcon, contentDescription = null, modifier = Modifier.size(16.dp))
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                        }
-                                        Text(actionText, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                                    }
+                        } else {
+                            OutlinedButton(
+                                onClick = { onActionClick(actionText) },
+                                border = BorderStroke(1.dp, NavyPrimary),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = NavyPrimary),
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                if (buttonIcon != null) {
+                                    Icon(buttonIcon, contentDescription = null, modifier = Modifier.size(14.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
                                 }
-                            } else {
-                                OutlinedButton(
-                                    onClick = { onActionClick(actionText) },
-                                    border = BorderStroke(1.dp, NavyPrimary),
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = NavyPrimary),
-                                    shape = RoundedCornerShape(8.dp),
-                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.Center
-                                    ) {
-                                        if (buttonIcon != null) {
-                                            Icon(buttonIcon, contentDescription = null, modifier = Modifier.size(16.dp))
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                        }
-                                        Text(actionText, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                                    }
-                                }
+                                Text(actionText, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                             }
                         }
                     }
@@ -437,31 +610,43 @@ fun MessageBubble(
 }
 
 @Composable
-fun CitationBadge(sourceName: String, onClick: () -> Unit = {}) {
+fun CitationBadge(citation: Citation, onMissingUrl: () -> Unit = {}) {
+    val uriHandler = LocalUriHandler.current
+    val hasUrl = !citation.sourceUrl.isNullOrBlank()
     Surface(
-        onClick = onClick,
-        shape = CircleShape,
-        color = EmeraldSecondaryContainer.copy(alpha = 0.2f),
-        border = BorderStroke(1.dp, EmeraldSecondaryContainer),
-        modifier = Modifier.padding(top = 8.dp)
+        onClick = {
+            if (hasUrl) uriHandler.openUri(citation.sourceUrl!!) else onMissingUrl()
+        },
+        shape = RoundedCornerShape(8.dp),
+        color = EmeraldSecondary.copy(alpha = 0.1f),
+        border = BorderStroke(1.dp, EmeraldSecondary.copy(alpha = 0.4f)),
+        modifier = Modifier.padding(top = 6.dp)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Icon(
                 Icons.Default.Description,
                 contentDescription = null,
-                tint = OnEmeraldSecondaryContainer,
+                tint = EmeraldSecondary,
                 modifier = Modifier.size(14.dp)
             )
-            Spacer(modifier = Modifier.width(6.dp))
             Text(
-                text = "[Kaynak: $sourceName]",
-                color = OnEmeraldSecondaryContainer,
+                text = citation.sourceName,
+                color = EmeraldSecondary,
                 fontSize = 11.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.SemiBold
             )
+            if (hasUrl) {
+                Icon(
+                    Icons.AutoMirrored.Filled.OpenInNew,
+                    contentDescription = "Kaynağa git",
+                    tint = EmeraldSecondary,
+                    modifier = Modifier.size(12.dp)
+                )
+            }
         }
     }
 }
@@ -533,7 +718,7 @@ fun KosgebTemplateContent(introText: String) {
             }
         }
 
-        CitationBadge("KOSGEB 2026 Destek Rehberi")
+        CitationBadge(Citation(sourceName = "KOSGEB 2026 Destek Rehberi", sourceUrl = "https://www.kosgeb.gov.tr/"))
     }
 }
 
@@ -834,27 +1019,35 @@ fun TypingIndicatorBubble() {
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                Icons.Default.SmartToy,
+                Icons.Default.AutoAwesome,
                 contentDescription = null,
                 tint = OnEmeraldSecondaryContainer,
                 modifier = Modifier.size(18.dp)
             )
         }
 
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp))
-                .background(Color.White)
-                .border(1.dp, OutlineVariant.copy(alpha = 0.5f), RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp))
-                .padding(12.dp)
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = androidx.compose.ui.Modifier.alpha(alpha)
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                "Girişim Asistanı",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = OnEmeraldSecondaryContainer
+            )
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp))
+                    .background(Color.White)
+                    .border(1.dp, OutlineVariant.copy(alpha = 0.5f), RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp))
+                    .padding(14.dp)
             ) {
-                Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(OnSurfaceVariant))
-                Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(OnSurfaceVariant))
-                Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(OnSurfaceVariant))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = androidx.compose.ui.Modifier.alpha(alpha)
+                ) {
+                    Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(OnSurfaceVariant))
+                    Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(OnSurfaceVariant))
+                    Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(OnSurfaceVariant))
+                }
             }
         }
     }
@@ -863,6 +1056,8 @@ fun TypingIndicatorBubble() {
 @Composable
 fun ChatInputBar(
     inputText: String,
+    selectedMode: ChatMode,
+    onModeSelected: (ChatMode) -> Unit,
     onTextChange: (String) -> Unit,
     onAddAttachment: () -> Unit,
     onSend: () -> Unit
@@ -876,71 +1071,77 @@ fun ChatInputBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(SurfaceContainerLowest, RoundedCornerShape(12.dp))
-                    .border(2.dp, OutlineVariant, RoundedCornerShape(12.dp))
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onAddAttachment) {
-                    Icon(
-                        Icons.Default.AddCircle,
-                        contentDescription = "Ekle",
-                        tint = OnSurfaceVariant,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
+            // Mod seçici (üst satır)
+            ChatModePicker(
+                selectedMode = selectedMode,
+                onModeSelected = onModeSelected
+            )
 
-                BasicTextField(
-                    value = inputText,
-                    onValueChange = onTextChange,
+            // Alt satır: metin alanı + gönder/mikrofon
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Box(
                     modifier = Modifier
                         .weight(1f)
-                        .padding(horizontal = 8.dp),
-                    textStyle = androidx.compose.ui.text.TextStyle(
-                        color = Color.Black,
-                        fontSize = 15.sp
-                    ),
-                    decorationBox = { innerTextField ->
-                        if (inputText.isEmpty()) {
-                            Text(
-                                "Bir soru sorun... (örn. KOSGEB)",
-                                color = OnSurfaceVariant.copy(alpha = 0.6f),
-                                fontSize = 15.sp
-                            )
-                        }
-                        innerTextField()
-                    }
-                )
-
-                IconButton(
-                    onClick = onSend,
-                    enabled = inputText.isNotBlank(),
-                    modifier = Modifier
-                        .size(36.dp)
-                        .background(NavyPrimary, RoundedCornerShape(8.dp))
+                        .background(SurfaceContainerLow, RoundedCornerShape(20.dp))
+                        .padding(horizontal = 14.dp, vertical = 10.dp)
                 ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.Send,
-                        contentDescription = "Gönder",
-                        tint = Color.White,
-                        modifier = Modifier.size(18.dp)
+                    BasicTextField(
+                        value = inputText,
+                        onValueChange = onTextChange,
+                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = androidx.compose.ui.text.TextStyle(
+                            color = Color.Black,
+                            fontSize = 15.sp
+                        ),
+                        decorationBox = { innerTextField ->
+                            if (inputText.isEmpty()) {
+                                Text(
+                                    "Sorunuzu yazın...",
+                                    color = OnSurfaceVariant.copy(alpha = 0.6f),
+                                    fontSize = 15.sp
+                                )
+                            }
+                            innerTextField()
+                        }
                     )
                 }
-            }
 
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                "Yapay zeka asistanı hata yapabilir. Önemli kararlar öncesi uzmanlara danışın.",
-                color = OnSurfaceVariant.copy(alpha = 0.7f),
-                fontSize = 10.sp,
-                fontWeight = FontWeight.SemiBold
-            )
+                if (inputText.isNotBlank()) {
+                    Box(
+                        modifier = Modifier
+                            .size(42.dp)
+                            .background(PurpleAccent, CircleShape)
+                            .clickable(onClick = onSend),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.Send,
+                            contentDescription = "Gönder",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                } else {
+                    IconButton(
+                        onClick = { /* mikrofon placeholder */ },
+                        modifier = Modifier.size(42.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Mic,
+                            contentDescription = "Sesli giriş",
+                            tint = OnSurfaceVariant,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+            }
         }
     }
 }

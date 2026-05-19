@@ -2,6 +2,7 @@ package com.anlarsinsoftware.girisimkolay.chat.data.repository
 
 import com.anlarsinsoftware.girisimkolay.chat.domain.entity.ChatMessage
 import com.anlarsinsoftware.girisimkolay.chat.domain.entity.ChatMode
+import com.anlarsinsoftware.girisimkolay.chat.domain.entity.ChatSessionSummary
 import com.anlarsinsoftware.girisimkolay.chat.domain.entity.Citation
 import com.anlarsinsoftware.girisimkolay.chat.domain.repository.ChatRepository
 import com.anlarsinsoftware.girisimkolay.core.domain.Clock
@@ -13,6 +14,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 
 class MockChatRepository(
@@ -60,6 +62,17 @@ class MockChatRepository(
     }
 
     override fun getTypingStatus(): Flow<Boolean> = _isTyping.asStateFlow()
+
+    override fun listRecentSessions(): Flow<List<ChatSessionSummary>> = flowOf(emptyList())
+
+    override suspend fun switchSession(sessionId: String) {}
+
+    override fun startNewSession() {
+        sessionId.value = idProvider.randomId()
+        _messages.value = emptyList()
+    }
+
+    override fun getCurrentUserDisplayName(): String? = "Test Kullanıcısı"
 
     private suspend fun simulateAiResponse(userText: String, mode: ChatMode): ChatMessage {
         _isTyping.value = true
