@@ -1,31 +1,55 @@
 package com.anlarsinsoftware.girisimkolay.chat.data
 
+import android.util.Log
 import com.anlarsinsoftware.girisimkolay.chat.data.dto.ChatResponse
 import com.anlarsinsoftware.girisimkolay.chat.data.dto.ChatResponseMessageDto
 import com.anlarsinsoftware.girisimkolay.chat.data.dto.CitationDto
 import com.anlarsinsoftware.girisimkolay.chat.data.dto.ProfilingSnapshotDto
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.functions.FirebaseFunctions
 import kotlinx.coroutines.tasks.await
 
 class FirebaseFunctionsChatDataSource(
-    private val functions: FirebaseFunctions
+    private val functions: FirebaseFunctions,
+    private val auth: FirebaseAuth
 ) {
     suspend fun sendMessage(
         sessionId: String?,
         text: String,
         clientRequestId: String
     ): ChatResponse {
+        Log.i(
+            "FirebaseFunctionsChat",
+            "Calling sendChatMessage. sessionId=${sessionId ?: "new"}, requestId=$clientRequestId"
+        )
+
+        // Force token refresh to ensure authentication is sent correctly to the function
+        try {
+            auth.currentUser?.getIdToken(true)?.await()
+            Log.d("FirebaseFunctionsChat", "Auth token refreshed successfully.")
+        } catch (e: Exception) {
+            Log.w("FirebaseFunctionsChat", "Failed to refresh auth token: ${e.message}")
+        }
+
         val payload = mapOf(
             "sessionId" to sessionId,
             "text" to text,
             "clientRequestId" to clientRequestId
         )
-        val data = functions
-            .getHttpsCallable("sendChatMessage")
-            .call(payload)
-            .await()
-            .data as? Map<*, *> ?: error("Malformed chat response.")
-        return data.toChatResponse()
+        return try {
+            Log.d("FirebaseFunctionsChat", "Attempting HTTPS callable: sendChatMessage")
+            val result = functions
+                .getHttpsCallable("sendChatMessage")
+                .call(payload)
+                .await()
+            
+            val data = result.data as? Map<*, *> ?: error("Malformed chat response.")
+            Log.i("FirebaseFunctionsChat", "sendChatMessage call succeeded.")
+            data.toChatResponse()
+        } catch (exception: Exception) {
+            Log.e("FirebaseFunctionsChat", "sendChatMessage call failed. Error: ${exception.message}", exception)
+            throw exception
+        }
     }
 }
 

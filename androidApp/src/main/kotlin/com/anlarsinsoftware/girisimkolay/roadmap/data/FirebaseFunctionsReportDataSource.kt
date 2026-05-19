@@ -1,13 +1,24 @@
 package com.anlarsinsoftware.girisimkolay.roadmap.data
 
+import android.util.Log
 import com.anlarsinsoftware.girisimkolay.roadmap.data.dto.RoadmapReportDto
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.functions.FirebaseFunctions
 import kotlinx.coroutines.tasks.await
 
 class FirebaseFunctionsReportDataSource(
-    private val functions: FirebaseFunctions
+    private val functions: FirebaseFunctions,
+    private val auth: FirebaseAuth
 ) {
     suspend fun generateReport(sessionId: String): RoadmapReportDto {
+        // Force token refresh to ensure authentication is sent correctly to the function
+        try {
+            auth.currentUser?.getIdToken(true)?.await()
+            Log.d("FirebaseFunctionsReport", "Auth token refreshed successfully.")
+        } catch (e: Exception) {
+            Log.w("FirebaseFunctionsReport", "Failed to refresh auth token: ${e.message}")
+        }
+
         val response = functions
             .getHttpsCallable("generateRoadmapReport")
             .call(mapOf("sessionId" to sessionId))

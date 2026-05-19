@@ -1,5 +1,6 @@
 package com.anlarsinsoftware.girisimkolay.auth.data
 
+import android.util.Log
 import com.anlarsinsoftware.girisimkolay.chat.data.dto.ProfileExtractRequest
 import com.anlarsinsoftware.girisimkolay.chat.data.dto.ProfilingSnapshotDto
 import com.anlarsinsoftware.girisimkolay.core.data.MemoryCache
@@ -87,6 +88,14 @@ class FirestoreProfileRepository(
         currentSnapshot: ProfilingSnapshot?
     ): Result<ProfilingSnapshot> {
         return try {
+            // Force token refresh to ensure authentication is sent correctly to the function
+            try {
+                auth.currentUser?.getIdToken(true)?.await()
+                Log.d("FirestoreProfileRepo", "Auth token refreshed successfully.")
+            } catch (e: Exception) {
+                Log.w("FirestoreProfileRepo", "Failed to refresh auth token: ${e.message}")
+            }
+
             val result = functions
                 .getHttpsCallable("extractProfileSnapshot")
                 .call(

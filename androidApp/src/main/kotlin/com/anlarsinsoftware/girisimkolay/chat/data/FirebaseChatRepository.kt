@@ -1,5 +1,6 @@
 package com.anlarsinsoftware.girisimkolay.chat.data
 
+import android.util.Log
 import com.anlarsinsoftware.girisimkolay.chat.domain.entity.ChatMessage
 import com.anlarsinsoftware.girisimkolay.chat.domain.repository.ChatRepository
 import com.anlarsinsoftware.girisimkolay.core.domain.Clock
@@ -24,6 +25,10 @@ class FirebaseChatRepository(
     private val idProvider: IdProvider = DefaultIdProvider,
     private val logger: Logger = NoopLogger
 ) : ChatRepository {
+    init {
+        Log.i("FirebaseChatRepository", "Live Firebase chat repository initialized.")
+    }
+
     private val chatHistory = MutableStateFlow<List<ChatMessage>>(emptyList())
     private val isTyping = MutableStateFlow(false)
     private val activeSessionId = MutableStateFlow(sessionStateStore.getActiveSessionId())
@@ -55,6 +60,7 @@ class FirebaseChatRepository(
     }
 
     override suspend fun sendMessage(text: String): Result<ChatMessage> {
+        Log.i("FirebaseChatRepository", "sendMessage started.")
         val uid = auth.currentUser?.uid
             ?: return Result.Error(message = "Mesaj göndermek için giriş yapmalısınız.", code = "unauthenticated")
         val trimmed = text.trim()
@@ -78,6 +84,7 @@ class FirebaseChatRepository(
                 text = trimmed,
                 clientRequestId = idProvider.randomId()
             )
+            Log.i("FirebaseChatRepository", "Functions response received for session ${response.sessionId}.")
             activeSessionId.value = response.sessionId
             sessionStateStore.saveActiveSessionId(response.sessionId)
             val refreshed = historyDataSource.loadMessages(uid = uid, sessionId = response.sessionId)
@@ -86,6 +93,7 @@ class FirebaseChatRepository(
             Result.Success(refreshed.lastOrNull { !it.isFromUser } ?: response.message.toDomain())
         } catch (exception: Exception) {
             logger.error("FirebaseChatRepository", "Send message failed", exception)
+            Log.e("FirebaseChatRepository", "sendMessage failed.", exception)
             isTyping.value = false
             chatHistory.value = chatHistory.value + ChatMessage(
                 id = "error-${idProvider.randomId()}",
