@@ -19,7 +19,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircle
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.FlightTakeoff
@@ -27,7 +28,6 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.SupportAgent
 import androidx.compose.material3.*
@@ -53,17 +53,27 @@ import com.anlarsinsoftware.girisimkolay.ui.theme.OutlineVariant
 import com.anlarsinsoftware.girisimkolay.ui.theme.SurfaceContainerLow
 import com.anlarsinsoftware.girisimkolay.ui.theme.SurfaceContainerLowest
 import com.anlarsinsoftware.girisimkolay.ui.theme.OnSurfaceVariant
+import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AIProfileChatScreen(viewModel: ChatViewModel = koinViewModel()) {
+fun AIProfileChatScreen(
+    viewModel: ChatViewModel = koinViewModel(),
+    onNavigateBack: () -> Unit,
+    onNavigateToNotifications: () -> Unit,
+    onNavigateToRoadmap: () -> Unit,
+    onAskExpert: (String) -> Unit
+) {
     val messages by viewModel.messages.collectAsState()
     val isTyping by viewModel.isTyping.collectAsState()
     var inputText by remember { mutableStateOf("") }
     val showWelcome = messages.size <= 1 && messages.none { it.isFromUser }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -88,22 +98,18 @@ fun AIProfileChatScreen(viewModel: ChatViewModel = koinViewModel()) {
                                     color = NavyPrimary
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    "(Gemini 1.5 Pro)",
-                                    fontSize = 12.sp,
-                                    color = OnSurfaceVariant
-                                )
+                                Text("Kurumsal danışman", fontSize = 12.sp, color = OnSurfaceVariant)
                             }
                         }
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = {}) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Geri")
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri")
                     }
                 },
                 actions = {
-                    IconButton(onClick = {}) {
+                    IconButton(onClick = onNavigateToNotifications) {
                         Icon(
                             Icons.Default.Notifications,
                             contentDescription = "Bildirimler",
@@ -118,6 +124,11 @@ fun AIProfileChatScreen(viewModel: ChatViewModel = koinViewModel()) {
             ChatInputBar(
                 inputText = inputText,
                 onTextChange = { inputText = it },
+                onAddAttachment = {
+                    scope.launch {
+                        snackbarHostState.showSnackbar("Belge yükleme özelliği Android dosya seçiciye bağlanmak üzere hazır.")
+                    }
+                },
                 onSend = {
                     if (inputText.isNotBlank()) {
                         viewModel.sendMessage(inputText)
@@ -143,7 +154,20 @@ fun AIProfileChatScreen(viewModel: ChatViewModel = koinViewModel()) {
             }
 
             items(messages) { message ->
-                MessageBubble(message)
+                MessageBubble(
+                    message = message,
+                    onActionClick = { action ->
+                        when {
+                            action.contains("Rapor", ignoreCase = true) -> onNavigateToRoadmap()
+                            action.contains("Uzman", ignoreCase = true) -> onAskExpert("financial")
+                            action.contains("Detay", ignoreCase = true) -> inputText = "Bu konuyu detaylandırır mısın?"
+                            else -> scope.launch { snackbarHostState.showSnackbar(action) }
+                        }
+                    },
+                    onCitationClick = { source ->
+                        scope.launch { snackbarHostState.showSnackbar("Kaynak: $source") }
+                    }
+                )
             }
 
             if (isTyping) {
@@ -197,7 +221,11 @@ fun WelcomeStateView() {
 }
 
 @Composable
-fun MessageBubble(message: Message) {
+fun MessageBubble(
+    message: Message,
+    onActionClick: (String) -> Unit,
+    onCitationClick: (String) -> Unit
+) {
     if (message.isFromUser) {
         // User bubble
         Box(
@@ -282,7 +310,7 @@ fun MessageBubble(message: Message) {
                                 if (message.sources.isNotEmpty()) {
                                     Spacer(modifier = Modifier.height(12.dp))
                                     message.sources.forEach { sourceName ->
-                                        CitationBadge(sourceName)
+                                        CitationBadge(sourceName, onClick = { onCitationClick(sourceName) })
                                     }
                                 }
                             }
@@ -309,7 +337,7 @@ fun MessageBubble(message: Message) {
 
                             if (isPrimary) {
                                 Button(
-                                    onClick = {},
+                                    onClick = { onActionClick(actionText) },
                                     colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary),
                                     shape = RoundedCornerShape(8.dp),
                                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
@@ -328,7 +356,7 @@ fun MessageBubble(message: Message) {
                                 }
                             } else {
                                 OutlinedButton(
-                                    onClick = {},
+                                    onClick = { onActionClick(actionText) },
                                     border = BorderStroke(1.dp, NavyPrimary),
                                     colors = ButtonDefaults.outlinedButtonColors(contentColor = NavyPrimary),
                                     shape = RoundedCornerShape(8.dp),
@@ -356,9 +384,9 @@ fun MessageBubble(message: Message) {
 }
 
 @Composable
-fun CitationBadge(sourceName: String) {
+fun CitationBadge(sourceName: String, onClick: () -> Unit = {}) {
     Surface(
-        onClick = {},
+        onClick = onClick,
         shape = CircleShape,
         color = EmeraldSecondaryContainer.copy(alpha = 0.2f),
         border = BorderStroke(1.dp, EmeraldSecondaryContainer),
@@ -783,6 +811,7 @@ fun TypingIndicatorBubble() {
 fun ChatInputBar(
     inputText: String,
     onTextChange: (String) -> Unit,
+    onAddAttachment: () -> Unit,
     onSend: () -> Unit
 ) {
     Surface(
@@ -805,7 +834,7 @@ fun ChatInputBar(
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = {}) {
+                IconButton(onClick = onAddAttachment) {
                     Icon(
                         Icons.Default.AddCircle,
                         contentDescription = "Ekle",
@@ -844,7 +873,7 @@ fun ChatInputBar(
                         .background(NavyPrimary, RoundedCornerShape(8.dp))
                 ) {
                     Icon(
-                        Icons.Default.Send,
+                        Icons.AutoMirrored.Filled.Send,
                         contentDescription = "Gönder",
                         tint = Color.White,
                         modifier = Modifier.size(18.dp)

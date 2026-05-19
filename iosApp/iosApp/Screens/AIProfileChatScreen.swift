@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct AIProfileChatScreen: View {
     @StateObject private var viewModel = ChatViewModel()
@@ -72,15 +73,27 @@ struct MessageBubble: View {
                 
                 if !message.citations.isEmpty {
                     ForEach(message.citations, id: \.id) { citation in
-                        Text("Kaynakça: \(citation.sourceName)")
-                            .font(.caption2)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Color(.systemGray6))
-                            .cornerRadius(10)
-                            .onTapGesture {
-                                // open source
+                        let hasUrl = !(citation.sourceURL ?? "").isEmpty
+                        HStack(spacing: 3) {
+                            if hasUrl {
+                                Image(systemName: "arrow.up.right.square")
+                                    .font(.system(size: 9))
+                                    .foregroundColor(.blue)
                             }
+                            Text(citation.sourceName)
+                                .font(.caption2)
+                                .foregroundColor(hasUrl ? .blue : .secondary)
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(hasUrl ? Color.blue.opacity(0.1) : Color(.systemGray6))
+                        .cornerRadius(10)
+                        .onTapGesture {
+                            guard hasUrl,
+                                  let urlString = citation.sourceURL,
+                                  let url = URL(string: urlString) else { return }
+                            UIApplication.shared.open(url)
+                        }
                     }
                 }
             }
