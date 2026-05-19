@@ -22,9 +22,12 @@ import com.anlarsinsoftware.girisimkolay.auth.ui.RegisterScreen
 import com.anlarsinsoftware.girisimkolay.auth.viewmodel.AuthViewModel
 import com.anlarsinsoftware.girisimkolay.calendar.ui.BusinessCalendarScreen
 import com.anlarsinsoftware.girisimkolay.chat.ui.AIProfileChatScreen
+import com.anlarsinsoftware.girisimkolay.chat.ui.ExpertAdviceDetailScreen
 import com.anlarsinsoftware.girisimkolay.community.ui.CommunityHubScreen
 import com.anlarsinsoftware.girisimkolay.dashboard.ui.DashboardNewsFeedScreen
 import com.anlarsinsoftware.girisimkolay.roadmap.ui.RoadmapDocumentCenterScreen
+import com.anlarsinsoftware.girisimkolay.notifications.ui.NotificationsScreen
+import com.anlarsinsoftware.girisimkolay.advice.ui.RelatedQuestionsScreen
 import org.koin.androidx.compose.koinViewModel
 
 // ── Route constants ──────────────────────────────────────────
@@ -84,11 +87,44 @@ fun MainScreen() {
         // ── MAIN GRAPH (guarded by auth) ────────────────────
         navigation(startDestination = Screen.Chat.route, route = MAIN_GRAPH) {
             composable(Screen.Chat.route)      { MainScaffold(navController) { AIProfileChatScreen() } }
-            composable(Screen.Dashboard.route) { MainScaffold(navController) { DashboardNewsFeedScreen() } }
+            composable(Screen.Dashboard.route) {
+                MainScaffold(navController) {
+                    DashboardNewsFeedScreen(
+                        onNavigateToNotifications = { navController.navigate("notifications") }
+                    )
+                }
+            }
             composable(Screen.Calendar.route)  { MainScaffold(navController) { BusinessCalendarScreen() } }
             composable(Screen.Analytics.route) { MainScaffold(navController) { AnalyticsDashboardScreen() } }
-            composable(Screen.Community.route) { MainScaffold(navController) { CommunityHubScreen() } }
+            composable(Screen.Community.route) {
+                MainScaffold(navController) {
+                    CommunityHubScreen(
+                        onNavigateToNotifications = { navController.navigate("notifications") },
+                        onNavigateToAdviceDetail = { adviceId -> navController.navigate("expert_advice/$adviceId") }
+                    )
+                }
+            }
             composable(Screen.Roadmap.route)   { MainScaffold(navController) { RoadmapDocumentCenterScreen() } }
+
+            composable("notifications") {
+                NotificationsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToAdvice = { adviceId -> navController.navigate("expert_advice/$adviceId") }
+                )
+            }
+            composable("expert_advice/{adviceId}") { backStackEntry ->
+                val adviceId = backStackEntry.arguments?.getString("adviceId") ?: "1"
+                ExpertAdviceDetailScreen(
+                    adviceId = adviceId,
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToRelatedQuestions = { navController.navigate("related_questions") }
+                )
+            }
+            composable("related_questions") {
+                RelatedQuestionsScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
         }
     }
 
