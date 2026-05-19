@@ -10,6 +10,7 @@ import com.anlarsinsoftware.girisimkolay.calendar.viewmodel.CalendarViewModel
 import com.anlarsinsoftware.girisimkolay.chat.data.FirebaseChatRepository
 import com.anlarsinsoftware.girisimkolay.chat.data.FirebaseFunctionsChatDataSource
 import com.anlarsinsoftware.girisimkolay.chat.data.FirestoreChatHistoryDataSource
+import com.anlarsinsoftware.girisimkolay.chat.data.FirestoreChatSessionsDataSource
 import com.anlarsinsoftware.girisimkolay.chat.data.ChatSessionLocalStore
 import com.anlarsinsoftware.girisimkolay.chat.domain.repository.ChatRepository
 import com.anlarsinsoftware.girisimkolay.chat.viewmodel.ChatViewModel
@@ -43,6 +44,7 @@ val appModule = module {
     single<RoadmapLocalStore> { AndroidRoadmapLocalStore(get()) }
     single { FirebaseFunctionsChatDataSource(get(), get()) }
     single { FirestoreChatHistoryDataSource(get()) }
+    single { FirestoreChatSessionsDataSource(get()) }
     single { FirebaseFunctionsReportDataSource(get(), get()) }
     single { FirestoreReportDataSource(get()) }
 
@@ -65,6 +67,7 @@ val appModule = module {
             auth = get(),
             functionsDataSource = get(),
             historyDataSource = get(),
+            sessionsDataSource = get(),
             sessionStateStore = get(),
             clock = get(),
             idProvider = get(),

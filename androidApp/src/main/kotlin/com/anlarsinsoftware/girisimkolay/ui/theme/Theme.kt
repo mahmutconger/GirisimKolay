@@ -23,6 +23,7 @@ val OnSurfaceVariant = Color(0xFF44474D)
 val ErrorColor = Color(0xFFBA1A1A)
 val ErrorContainer = Color(0xFFFFDAD6)
 val OnErrorContainer = Color(0xFF93000A)
+val PurpleAccent = Color(0xFF6750A4)
 
 private val LightColorScheme = lightColorScheme(
     primary = NavyPrimary,
