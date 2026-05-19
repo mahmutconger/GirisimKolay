@@ -1,5 +1,7 @@
 package com.anlarsinsoftware.girisimkolay.chat.ui
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -16,6 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -23,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -94,6 +98,7 @@ fun MessageBubble(message: Message) {
     val alignment = if (message.isFromUser) Alignment.CenterEnd else Alignment.CenterStart
     val bubbleColor = if (message.isFromUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
     val textColor = if (message.isFromUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+    val context = LocalContext.current
 
     Box(
         modifier = Modifier.fillMaxWidth(),
@@ -117,29 +122,54 @@ fun MessageBubble(message: Message) {
                     .widthIn(max = 280.dp)
             ) {
                 Text(
-                    text = message.text, // Normally parse bold text here with AnnotatedString
+                    text = message.text,
                     color = textColor,
                     fontSize = 15.sp
                 )
             }
-            
-            if (message.sources.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                message.sources.forEach { source ->
+
+            if (message.citations.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                message.citations.forEach { citation ->
+                    val hasUrl = !citation.sourceUrl.isNullOrBlank()
                     Surface(
                         modifier = Modifier
-                            .clickable { /* Open source */ }
-                            .padding(top = 2.dp),
+                            .padding(top = 2.dp)
+                            .then(
+                                if (hasUrl) Modifier.clickable {
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(citation.sourceUrl))
+                                    context.startActivity(intent)
+                                } else Modifier
+                            ),
                         shape = CircleShape,
-                        color = MaterialTheme.colorScheme.secondaryContainer
+                        color = if (hasUrl)
+                            MaterialTheme.colorScheme.secondaryContainer
+                        else
+                            MaterialTheme.colorScheme.surfaceVariant
                     ) {
-                        Text(
-                            text = "Kaynakça: $source",
+                        Row(
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Medium
-                        )
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            if (hasUrl) {
+                                Icon(
+                                    imageVector = Icons.Default.OpenInBrowser,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(10.dp),
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            }
+                            Text(
+                                text = citation.sourceName,
+                                color = if (hasUrl)
+                                    MaterialTheme.colorScheme.onSecondaryContainer
+                                else
+                                    MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
                     }
                 }
             }

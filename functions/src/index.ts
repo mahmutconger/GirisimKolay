@@ -39,10 +39,16 @@ const REPORT_RUNTIME = {
   maxInstances: 3,
   minInstances: 0
 };
-const SYSTEM_PROMPT = `Sen GirişimKolay'ın yapay zeka iş danışmanısın.
-Daima Türkçe cevap ver. Bağlam dışı bilgi uydurma.
-Yalnız doğrulanabilir mevzuat ve destek bağlamına dayalı, kısa ve uygulanabilir öneri üret.
-Eğer delil zayıfsa bunu açıkça söyle ve güvenli bir sonraki adım öner.`;
+
+const SYSTEM_PROMPT = `Sen GirişimKolay'ın yapay zeka iş danışmanısın. Türkiye'de girişimcilik, şirket kuruluşu, vergi, SGK, KOSGEB destekleri ve e-ticaret konularında yardımcı oluyorsun.
+
+Kurallar:
+- Her zaman Türkçe cevap ver.
+- Sana verilen bağlam belgelerine dayan; belgelerde olmayan bilgiler için "bu konuyu bir uzmanla doğrulaman önerilir" de.
+- Eğer bağlam zayıfsa, genel bilginden yararlan ama yasal kesinlik iddia etme; cevabın sonunda profesyonel destek öner.
+- Cevaplar kısa, net ve uygulanabilir olsun. Madde madde listeler kullan.
+- Kullanıcıya bir sonraki somut adımı mutlaka söyle.
+- Asla boş cevap dönderme; her zaman en azından yönlendirici bir cevap üret.`;
 
 type ProfilingSnapshot = {
   businessIdea?: string | null;
@@ -71,82 +77,243 @@ type KnowledgeDocument = {
   text: string;
 };
 
+// ─── KNOWLEDGE BASE ───────────────────────────────────────────────────────────
+// Her belge gerçek Türk mevzuatına ve resmi kaynaklara dayanmaktadır.
+// Belge metinleri TF-IDF retrieval için yeterince uzun tutulmuştur.
 const KNOWLEDGE_BASE: KnowledgeDocument[] = [
   {
-    id: "sahis_sirketi",
+    id: "sahis_sirketi_kurulusu",
     sourceName: "Türk Ticaret Kanunu & Vergi Usul Kanunu",
     documentType: "Şirket Kuruluşu",
-    section: "Şahıs Şirketi",
+    section: "Şahıs Şirketi Kurulum Süreci",
     publishedAt: "2026-01-05",
     sourceUrl: "https://www.resmigazete.gov.tr/",
     version: "2026.1",
-    text: "Şahıs şirketi Türkiye'de hızlı ve düşük maliyetli kuruluş modelidir. Sermaye şartı yoktur. Sahibi şirket borçlarından şahsen sorumludur. E-ticaret yapan küçük girişimciler için sık tercih edilir."
+    text: "Şahıs şirketi (ferdi işletme) Türkiye'de en hızlı ve düşük maliyetli kuruluş modelidir. Sermaye şartı yoktur. Kuruluş için önce vergi dairesine başvurulur, işe başlama bildirimi yapılır ve mükellefiyet açılır. Ticaret siciline tescil zorunlu değildir ancak esnaf sicil kaydı gerekebilir. Sahibi tüm borçlardan şahsen ve sınırsız sorumludur. E-ticaret yapan küçük girişimciler, serbest meslek erbabı ve tek kişilik hizmet işletmeleri için sıklıkla tercih edilir. Yıllık ciro belirli eşiği aşarsa gerçek usul vergilendirmeye geçiş zorunlu olur. Muhasebeci ya da mali müşavir zorunluluğu yoktur ancak defter tutma ve beyanname yükümlülüğü doğar."
   },
   {
-    id: "limited_sirket",
+    id: "limited_sirket_kurulusu",
     sourceName: "Türk Ticaret Kanunu Md.573-644",
     documentType: "Şirket Kuruluşu",
-    section: "Limited Şirket",
+    section: "Limited Şirket Kurulum Süreci",
     publishedAt: "2026-01-05",
     sourceUrl: "https://www.resmigazete.gov.tr/",
     version: "2026.1",
-    text: "Limited şirket için en az 10.000 TL sermaye gerekir. Ortakların sorumluluğu sınırlıdır. Daha kurumsal yapı, ortaklı iş ve büyüme senaryoları için tercih edilir."
+    text: "Limited şirket kurmak için en az 10.000 TL sermaye gerekir. Bir veya birden fazla ortak olabilir. Kuruluş için önce MERSİS sistemi üzerinden başvuru yapılır, ardından noterden imza beyannamesi ve şirket sözleşmesi onaylatılır, ticaret siciline tescil ve ilan edilir. Ortakların sorumluluğu koydukları sermaye ile sınırlıdır. Kurumlar vergisine tabidir. Daha kurumsal yapı, ortaklı iş ve büyüme senaryoları için tercih edilir. Muhasebeci ya da mali müşavir zorunludur. Yönetim kurulu ya da müdür atanması gerekir. Tescil sonrası vergi dairesine ve SGK'ya bildirim yapılır."
+  },
+  {
+    id: "anonim_sirket_genel",
+    sourceName: "Türk Ticaret Kanunu Md.329-563",
+    documentType: "Şirket Kuruluşu",
+    section: "Anonim Şirket Özellikleri",
+    publishedAt: "2026-01-05",
+    sourceUrl: "https://www.resmigazete.gov.tr/",
+    version: "2026.1",
+    text: "Anonim şirket en az 50.000 TL sermaye ile kurulur. Halka arz edilebilir, pay senetleri çıkarılabilir. En az bir kurucu ortak yeterlidir. Yönetim kurulu zorunludur. Kurumlar vergisine tabidir. Büyük ölçekli işletmeler, yatırımcı alma ve halka arz planlayanlar için uygundur. Küçük girişimciler için genellikle limited şirket daha pratiktir. Kuruluş süreci limited şirkete benzer: MERSİS başvurusu, noter, ticaret sicili ve vergi dairesi kaydı."
+  },
+  {
+    id: "mersis_ticaret_sicili",
+    sourceName: "Gümrük ve Ticaret Bakanlığı MERSİS Sistemi",
+    documentType: "Kuruluş Prosedürü",
+    section: "MERSİS ve Ticaret Sicili",
+    publishedAt: "2026-01-10",
+    sourceUrl: "https://mersis.gtb.gov.tr/",
+    version: "2026.1",
+    text: "MERSİS (Merkezi Sicil Kayıt Sistemi), Türkiye'de şirket ve ticari işletme kuruluşlarının merkezi olarak yapıldığı online platformdur. Limited ve anonim şirket kuruluşları için MERSİS üzerinden başvuru zorunludur. Başvuruda şirket unvanı, faaliyet konusu, sermaye miktarı, ortak bilgileri ve yönetici bilgileri girilir. Onay sonrası ticaret siciline tescil edilir ve MERSİS numarası alınır. Bu numara şirketin resmi kimliğidir ve tüm ticari faaliyetlerde kullanılır. E-ticaret sitelerinde de MERSİS numarasının yayınlanması 6563 sayılı Kanun kapsamında zorunludur."
+  },
+  {
+    id: "kdv_mukellefiyet",
+    sourceName: "3065 Sayılı KDV Kanunu",
+    documentType: "Vergi Kanunu",
+    section: "KDV Mükellefiyet Türleri",
+    publishedAt: "2026-01-01",
+    sourceUrl: "https://www.gib.gov.tr/",
+    version: "2026.1",
+    text: "KDV (Katma Değer Vergisi) Türkiye'de mal ve hizmet teslimlerinde uygulanan en temel vergidir. Standart oran %20'dir; gıda, ilaç ve bazı temel ürünlerde %1 veya %10 indirimli oran uygulanır. Şirket kuran her girişimci KDV mükellefi olmak zorundadır ve her ay ya da üç ayda bir KDV beyannamesi vermek zorundadır. Basit usul mükellefler KDV'den muaf tutulabilir. Girişimcinin aldığı mal ve hizmetler için ödediği KDV'yi (yüklenilen KDV), müşterisine tahsil ettiği KDV'den mahsup edebilir. E-ticaret ve yazılım satışlarında da KDV uygulanır."
+  },
+  {
+    id: "gelir_vergisi_girisimci",
+    sourceName: "193 Sayılı Gelir Vergisi Kanunu",
+    documentType: "Vergi Kanunu",
+    section: "Gelir Vergisi Dilimleri ve Girişimciler",
+    publishedAt: "2026-01-01",
+    sourceUrl: "https://www.gib.gov.tr/",
+    version: "2026.1",
+    text: "Şahıs şirketi sahibi ve serbest meslek erbabı gerçek kişiler gelir vergisine tabidir. 2026 yılı için gelir vergisi dilimleri: 110.000 TL'ye kadar %15, 230.000 TL'ye kadar %20, 580.000 TL'ye kadar %27, 3.000.000 TL'ye kadar %35, üzeri %40 olarak uygulanmaktadır. Yıllık gelir vergisi beyannamesi Mart ayında verilir. Geçici vergi ise üç ayda bir ödenir. Giderler (kira, telefon, bilgisayar, ulaşım, reklam) vergi matrahından düşülebilir. İyi bir muhasebeci ile çalışmak vergi optimizasyonu açısından önemlidir."
+  },
+  {
+    id: "kurumlar_vergisi",
+    sourceName: "5520 Sayılı Kurumlar Vergisi Kanunu",
+    documentType: "Vergi Kanunu",
+    section: "Kurumlar Vergisi",
+    publishedAt: "2026-01-01",
+    sourceUrl: "https://www.gib.gov.tr/",
+    version: "2026.1",
+    text: "Limited şirket ve anonim şirket gibi sermaye şirketleri kurumlar vergisine tabidir. 2026 yılı için kurumlar vergisi oranı %25'tir. Yıllık kurumlar vergisi beyannamesi Nisan ayında verilir. Geçici vergi üç ayda bir ödenir. Şirketin giderleri (personel, kira, amortisman, faiz) matrahtan düşülebilir. Yatırım teşviklerinden yararlanan şirketler için indirimli kurumlar vergisi uygulanabilir. Kâr dağıtımında ayrıca %10 stopaj vergisi uygulanır."
   },
   {
     id: "kosgeb_mikro",
     sourceName: "KOSGEB 2026 Destek Programı Yönetmeliği",
     documentType: "Destek Programı",
-    section: "Mikro İşletme Desteği",
+    section: "Mikro ve Küçük İşletme Destekleri",
     publishedAt: "2026-02-10",
     sourceUrl: "https://www.kosgeb.gov.tr/",
     version: "2026.2",
-    text: "Mikro işletmelere e-ticaret altyapısı, yazılım, web sitesi ve pazaryeri entegrasyonu için 100.000 TL'ye kadar hibe desteği sağlanabilir. Başvuru iş planı ile yapılır."
+    text: "KOSGEB (Küçük ve Orta Ölçekli İşletmeleri Geliştirme ve Destekleme İdaresi) mikro işletmelere çeşitli destekler sunar. E-ticaret altyapısı, web sitesi, yazılım geliştirme, pazaryeri entegrasyonu, sosyal medya ve dijital pazarlama giderleri için 100.000 TL'ye kadar hibe desteği sağlanabilir. Başvuru için KOSGEB sistemine kayıt, işletme belgesi ve iş planı gereklidir. Destek oranı %60-75 arasında değişir, kalan kısım girişimci tarafından karşılanır. Fiziki ürün üreticileri için makine-ekipman destekleri de mevcuttur."
   },
   {
-    id: "genc_girisimci",
+    id: "kosgeb_girisimcilik",
+    sourceName: "KOSGEB Girişimcilik Destek Programı",
+    documentType: "Destek Programı",
+    section: "Yeni İşletme Kurma Desteği",
+    publishedAt: "2026-02-10",
+    sourceUrl: "https://www.kosgeb.gov.tr/",
+    version: "2026.2",
+    text: "KOSGEB Girişimcilik Destek Programı, yeni işletme kurmak isteyen girişimcilere destek sağlar. Uygulamalı Girişimcilik Eğitimi (UGE) tamamlanması zorunludur. Eğitim sonrası iş planı hazırlanır ve değerlendirme kuruluna sunulur. Onaylanan projelere: işletme kuruluş desteği (10.000 TL'ye kadar), makine-ekipman desteği (100.000 TL'ye kadar), kira desteği (12 ay boyunca aylık 3.000 TL'ye kadar), mentörlük desteği sağlanır. Genç girişimcilere ve kadın girişimcilere ek destekler sunulabilir."
+  },
+  {
+    id: "kosgeb_tekno",
+    sourceName: "KOSGEB Ar-Ge, İnovasyon ve Teknolojik Üretim Destek Programı",
+    documentType: "Destek Programı",
+    section: "Teknogirişim ve Ar-Ge Destekleri",
+    publishedAt: "2026-02-10",
+    sourceUrl: "https://www.kosgeb.gov.tr/",
+    version: "2026.2",
+    text: "Teknoloji tabanlı işletmeler ve yazılım girişimleri için KOSGEB Ar-Ge ve İnovasyon Destek Programı kapsamında 750.000 TL'ye kadar destek sağlanabilir. Patent, faydalı model, marka tescili masrafları karşılanabilir. Prototip geliştirme, test ve belgelendirme giderleri desteklenir. TÜBİTAK 1512 programıyla birlikte kullanılabilir. Üniversite sanayi iş birliği projeleri için ek destekler mevcuttur. Başvuru için işletmenin KOBİ niteliği taşıması ve teknoloji/inovasyon odaklı proje sunması gerekir."
+  },
+  {
+    id: "tubitak_1512",
+    sourceName: "TÜBİTAK 1512 Girişimcilik Aşaması Programı",
+    documentType: "Destek Programı",
+    section: "Teknoloji Tabanlı Girişim Desteği",
+    publishedAt: "2026-01-15",
+    sourceUrl: "https://www.tubitak.gov.tr/",
+    version: "2026.1",
+    text: "TÜBİTAK 1512 Bireysel Girişimcilik Aşamalı Destek Programı, teknoloji tabanlı iş fikirleri olan girişimcilere destek sağlar. Üç aşamadan oluşur: Fizibilite (75.000 TL'ye kadar), Prototip Geliştirme (750.000 TL'ye kadar), Piyasalaştırma. Yazılım, yapay zeka, mobil uygulama, biyoteknoloji gibi teknoloji odaklı projeler desteklenir. Destekler geri ödemesizdir. Başvurular TÜBİTAK online sisteminden yapılır. Üniversite mezunu girişimciler ve spin-off şirketler öncelikli değerlendirilir."
+  },
+  {
+    id: "genc_girisimci_istisnasi",
     sourceName: "GVK Mükerrer Madde 20/B",
     documentType: "Vergi Kanunu",
-    section: "Genç Girişimci İstisnası",
+    section: "Genç Girişimci Kazanç İstisnası",
     publishedAt: "2026-01-01",
     sourceUrl: "https://www.gib.gov.tr/",
     version: "2026.1",
-    text: "29 yaşını doldurmamış gerçek kişiler belirli şartlarla genç girişimci vergi istisnasından yararlanabilir. Faaliyete başlangıç sonrası ilk dönemler için önemli vergi avantajı sağlayabilir."
+    text: "29 yaşını doldurmamış gerçek kişiler, ilk defa mükellefiyet tesis ettirmeleri ve faaliyete geçmeleri koşuluyla Genç Girişimci Kazanç İstisnasından yararlanabilir. 2026 yılı için istisna tutarı yıllık 230.000 TL civarındadır (her yıl güncellenir). Bu tutara kadar olan ticari, zirai veya serbest meslek kazancı gelir vergisinden istisnadır. Şahıs şirketleri ve serbest meslek erbabı yararlanabilir; limited şirket ortakları bu istisnadan yararlanamaz. Koşul: daha önce vergi mükellefi olmamak, işe devam etmek. Faaliyetin bizzat yürütülmesi gerekir."
   },
   {
-    id: "sgk_girisimci",
-    sourceName: "SGK 4/b Mevzuatı",
+    id: "sgk_bagkur_girisimci",
+    sourceName: "5510 Sayılı SGK Kanunu 4/b Maddesi",
     documentType: "SGK Mevzuatı",
-    section: "Prim Yükümlülükleri",
+    section: "Girişimci SGK Primleri ve Yükümlülükleri",
     publishedAt: "2026-01-15",
     sourceUrl: "https://www.sgk.gov.tr/",
     version: "2026.1",
-    text: "Şirket kuran kişi 4/b kapsamında Bağ-Kur prim yükümlüsü olabilir. Genç girişimciler için belirli dönemlerde prim destekleri söz konusu olabilir."
+    text: "Türkiye'de şirket kuran veya ticari faaliyete başlayan kişiler 4/b (Bağ-Kur) kapsamında SGK'ya kayıt olmak ve prim ödemek zorundadır. 2026 yılı asgari Bağ-Kur primi aylık yaklaşık 4.000-5.000 TL aralığındadır (güncel rakam için SGK'yı kontrol edin). Primler, prim matrahının %34.5'i olarak hesaplanır (sağlık + emeklilik). Genç girişimcilere ilk 1-2 yıl için prim desteği verilebilir. Eş zamanlı 4/a (işçi) kapsamında çalışıyorsa 4/b muafiyeti doğabilir. SGK primleri geç ödenirse gecikme faizi işler."
   },
   {
-    id: "e_ticaret",
+    id: "sgk_prim_desteği",
+    sourceName: "4447 Sayılı İşsizlik Sigortası Kanunu & SGK Teşvikleri",
+    documentType: "SGK Mevzuatı",
+    section: "İşveren SGK Prim Destekleri",
+    publishedAt: "2026-01-15",
+    sourceUrl: "https://www.sgk.gov.tr/",
+    version: "2026.1",
+    text: "Yeni işçi istihdam eden işverenlere SGK prim desteği sağlanabilir. Genç, kadın ve engelli bireyleri istihdam eden işverenler ek teşviklerden yararlanır. İşkur üzerinden teşvik bildirimi yapılması gerekir. 4447 sayılı Kanun kapsamındaki teşviklerde işveren payının bir kısmı Hazine tarafından karşılanır. Destek süreleri istihdam edilen kişinin niteliğine göre 6 ay ile 5 yıl arasında değişir. Girişimciler ilk çalışanlarını işe alırken bu teşvikleri incelemelidir."
+  },
+  {
+    id: "e_ticaret_yukumlulukler",
     sourceName: "6563 Sayılı E-Ticaret Kanunu",
     documentType: "E-Ticaret Kanunu",
-    section: "Genel Yükümlülükler",
+    section: "E-Ticaret Genel Yükümlülükleri",
     publishedAt: "2026-02-01",
     sourceUrl: "https://www.resmigazete.gov.tr/",
     version: "2026.1",
-    text: "E-ticaret yapan işletmeler ticaret unvanı, MERSİS numarası, cayma hakkı ve iade yükümlülükleri konusunda kanuni gereklilikleri yerine getirmelidir."
+    text: "E-ticaret yapan işletmeler şu yükümlülükleri yerine getirmek zorundadır: Ticaret unvanı veya ad-soyadı, MERSİS numarası (şirket için), KEP adresi, iletişim bilgilerini site üzerinde yayınlamak. Müşterilere cayma hakkı (genellikle 14 gün) ve iade imkânı tanımak zorundadır. Mesafeli satış sözleşmesi düzenlemek ve onay almak zorunludur. Kişisel verilerin korunması için KVKK kapsamında aydınlatma yükümlülüğü vardır. Yurt dışına satış yapılıyorsa o ülkenin mevzuatı da geçerli olabilir. Elektronik fatura düzenleme zorunluluğu belirli ciro eşiği aşıldığında doğar."
+  },
+  {
+    id: "e_ticaret_platform_gereklilikleri",
+    sourceName: "Trendyol, Hepsiburada, Amazon Türkiye Satıcı Sözleşmeleri",
+    documentType: "E-Ticaret Platformu",
+    section: "Pazaryeri Satıcı Gereklilikleri",
+    publishedAt: "2026-01-20",
+    sourceUrl: "https://www.ticaret.gov.tr/",
+    version: "2026.1",
+    text: "Trendyol, Hepsiburada, Amazon Türkiye ve benzer pazaryerlerinde satıcı olmak için şirket kuruluşu zorunludur; şahıs şirketi de kabul edilir. Vergi levhası, imza sirküleri veya imza beyannamesi, banka hesabı ve ürün görselleri istenir. Platform komisyon oranları %8-25 arasında değişir. IBAN bilgisi doğrulanır. Platformlar kargo anlaşmaları yapılmasını zorunlu kılabilir. İade ve iptal oranları belirli eşiği aşarsa ceza puanı uygulanabilir. Satıcı paneli üzerinden envanter, sipariş ve fatura yönetimi yapılır."
+  },
+  {
+    id: "efatura_edefter",
+    sourceName: "Gelir İdaresi Başkanlığı - e-Fatura ve e-Defter",
+    documentType: "Vergi Kanunu",
+    section: "Elektronik Fatura ve Defter Zorunluluğu",
+    publishedAt: "2026-01-01",
+    sourceUrl: "https://www.efatura.gov.tr/",
+    version: "2026.1",
+    text: "Yıllık cirosu 3 milyon TL'yi aşan mükellefler e-Fatura kullanmak zorundadır. E-ticaret yapan mükellefler için bu eşik 500.000 TL'ye indirilmiştir (2026 rakamları için GİB'i kontrol edin). E-Defter zorunluluğu da belirli ciro eşiklerinde geçerlidir. e-Fatura için GİB'e başvuru yapılır ve özel entegratör veya GİB portalı üzerinden kullanım sağlanır. Kâğıt fatura yerine e-Fatura düzenlemek yasal zorunluluktur ve cezai yaptırımı vardır. Ayrıca e-Arşiv fatura zorunluluğu da farklı koşullarda uygulanabilir."
+  },
+  {
+    id: "muhasebeci_zorunluluk",
+    sourceName: "3568 Sayılı Serbest Muhasebeci ve Mali Müşavirlik Kanunu",
+    documentType: "Muhasebe Mevzuatı",
+    section: "Muhasebeci Zorunluluğu ve Maliyetler",
+    publishedAt: "2026-01-01",
+    sourceUrl: "https://www.turmob.org.tr/",
+    version: "2026.1",
+    text: "Limited ve anonim şirketlerin muhasebe kayıtlarını tutmak için Serbest Muhasebeci Mali Müşavir (SMMM) ile sözleşme zorunludur. Şahıs şirketi sahipleri ve serbest meslek erbabı da defter tutmak zorundadır; ancak küçük ölçekliler bunu kendileri yapabilir. Mali müşavir aylık ücretleri 2026'da yaklaşık 2.000-6.000 TL arasında değişmektedir (şehre ve iş hacmine göre). İyi bir mali müşavir; beyanname verme, vergi optimizasyonu, SGK bildirimleri ve iş kuruluşu sürecinde kritik rol oynar. Vergi cezalarından korunmak için nitelikli muhasebe desteği önemlidir."
+  },
+  {
+    id: "home_office_vergi",
+    sourceName: "GVK ve KVK - İşyeri ve Kira Giderleri",
+    documentType: "Vergi Kanunu",
+    section: "Home Office ve İşyeri Vergi Durumu",
+    publishedAt: "2026-01-01",
+    sourceUrl: "https://www.gib.gov.tr/",
+    version: "2026.1",
+    text: "Evden çalışan girişimciler home-office giderlerini vergi matrahından düşebilir; ancak işyeri kullanım oranı belgelenmelidir. Kiralık işyeri için ödenen kira, ticari gelirden düşülebilir bir giderdir; ev sahibine stopaj yükümlülüğü doğar (%20 stopaj). Şirket adına kiralanan ofis veya co-working alanı için ödenen kira gider yazılabilir. Kendi evinden çalışıyorsa ve evi iş adresi gösteriyorsa kat maliki onayı ve çevre temizlik vergisi dikkat edilmesi gereken konulardır. Vergi dairesinde iş adresi olarak ev adresi kullanılabilir ancak bazı iş kolları için fiziksel işyeri zorunlu olabilir."
+  },
+  {
+    id: "yatirimci_hisse_devri",
+    sourceName: "Türk Ticaret Kanunu & Sermaye Piyasası Kanunu",
+    documentType: "Yatırım ve Finansman",
+    section: "Yatırımcı Alma, Hisse Devri ve Melek Yatırım",
+    publishedAt: "2026-01-10",
+    sourceUrl: "https://www.spk.gov.tr/",
+    version: "2026.1",
+    text: "Türkiye'de girişim şirketleri melek yatırımcılardan veya risk sermayesi fonlarından finansman sağlayabilir. Limited şirketlerde hisse devri noter huzurunda yapılır. Yabancı yatırımcılar için çeşitli prosedürler uygulanabilir. Melek yatırımcılar, Hazine tarafından lisanslanan 'Bireysel Katılım Yatırımcısı (BKY)' statüsündeyse yatırımları üzerinden vergi indirimi alabilirler. Girişim sermayesi fonları (VC) aracılığıyla alınan yatırımlar genellikle convertible note veya tercihli hisse ile yapılır. Kitle fonlaması (crowdfunding) Türkiye'de SPK lisanslı platformlar üzerinden yapılabilir."
+  },
+  {
+    id: "kvkk_veri_koruma",
+    sourceName: "6698 Sayılı Kişisel Verilerin Korunması Kanunu (KVKK)",
+    documentType: "Veri Koruma",
+    section: "Girişimciler için KVKK Yükümlülükleri",
+    publishedAt: "2026-01-01",
+    sourceUrl: "https://www.kvkk.gov.tr/",
+    version: "2026.1",
+    text: "Müşteri verileri toplayan tüm işletmeler KVKK kapsamında yükümlüdür. Aydınlatma metni ve açık rıza beyanı alınması zorunludur. Veri ihlali durumunda KVKK'ya bildirim yükümlülüğü vardır. E-ticaret siteleri için gizlilik politikası ve çerez politikası zorunludur. VERBİS'e (Veri Sorumluları Sicili) kayıt, yıllık ciro ve çalışan sayısına göre zorunlu olabilir. KVKK ihlallerinde idari para cezaları 50.000 TL ile 1.000.000 TL arasında uygulanabilir. Veri işleme faaliyetleri için hukuki dayanak (rıza, sözleşme, meşru menfaat) belirlenmelidir."
   }
 ];
 
-function requireUid(uid?: string): string {
-  if (!uid) {
-    throw new HttpsError("unauthenticated", "Kimlik doğrulama gerekli.");
-  }
-  return uid;
-}
+// ─── TOKENIZASYON ─────────────────────────────────────────────────────────────
+// Türkçe stopword listesi: retrieval kalitesini artırmak için anlamsız
+// yüksek-frekanslı kelimeler çıkarılır.
+const TURKISH_STOPWORDS = new Set([
+  "bir", "bu", "şu", "ile", "için", "den", "dan", "ten", "tan",
+  "nin", "nın", "nun", "nün", "nde", "nda", "nde", "nda",
+  "var", "yok", "ama", "veya", "gibi", "kadar", "daha", "çok",
+  "her", "hem", "hiç", "nasıl", "olan", "olur", "oldu", "edilir",
+  "olan", "olarak", "ayrıca", "ancak", "sadece", "yani", "göre",
+  "sonra", "önce", "beri", "itibaren", "üzere", "dolayı",
+  "eğer", "ise", "iken", "rağmen", "karşın", "hatta", "bile",
+  "tüm", "bütün", "bazı", "hiçbir", "birçok", "birkaç"
+]);
 
 function tokenize(text: string): string[] {
   return text
     .toLocaleLowerCase("tr-TR")
     .replace(/[^\p{L}\p{N}\s]/gu, " ")
     .split(/\s+/)
-    .filter((token) => token.length > 2);
+    .filter((token) => token.length >= 2)
+    .filter((token) => !TURKISH_STOPWORDS.has(token));
 }
 
 function tf(tokens: string[]): Map<string, number> {
@@ -194,6 +361,13 @@ function retrieveDocuments(query: string, topK = 3): Array<KnowledgeDocument & {
     .slice(0, topK);
 }
 
+function requireUid(uid?: string): string {
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "Kimlik doğrulama gerekli.");
+  }
+  return uid;
+}
+
 function buildProfileSnapshot(text: string, currentProfile?: Partial<ProfilingSnapshot> | null): ProfilingSnapshot {
   const normalized = text.toLocaleLowerCase("tr-TR");
   const profile: ProfilingSnapshot = {
@@ -215,60 +389,138 @@ function inferBusinessIdea(text: string): string | null {
 }
 
 function inferSector(text: string): string | null {
-  if (text.includes("e-ticaret") || text.includes("etsy") || text.includes("amazon")) return "E-Ticaret";
-  if (text.includes("yazılım") || text.includes("uygulama") || text.includes("ai")) return "Yazılım";
-  if (text.includes("gıda") || text.includes("kafe")) return "Gıda";
+  if (
+    text.includes("e-ticaret") || text.includes("etsy") || text.includes("amazon") ||
+    text.includes("trendyol") || text.includes("hepsiburada") || text.includes("online satış") ||
+    text.includes("web sitesi") || text.includes("pazaryeri")
+  ) return "E-Ticaret";
+  if (
+    text.includes("yazılım") || text.includes("uygulama") || text.includes("ai") ||
+    text.includes("yapay zeka") || text.includes("mobil") || text.includes("saas") ||
+    text.includes("teknoloji") || text.includes("platform") || text.includes("app")
+  ) return "Yazılım / Teknoloji";
+  if (text.includes("gıda") || text.includes("kafe") || text.includes("restoran") || text.includes("yemek")) return "Gıda";
+  if (text.includes("tekstil") || text.includes("giyim") || text.includes("moda") || text.includes("butik")) return "Moda / Tekstil";
+  if (text.includes("danışmanlık") || text.includes("freelance") || text.includes("hizmet")) return "Danışmanlık / Hizmet";
+  if (text.includes("üretim") || text.includes("imalat") || text.includes("fabrika")) return "Üretim / İmalat";
   return null;
 }
 
 function inferCompanyType(text: string): string | null {
-  if (text.includes("şahıs")) return "Şahıs Şirketi";
-  if (text.includes("limited")) return "Limited Şirket";
+  if (
+    text.includes("şahıs") || text.includes("ferdi") || text.includes("bireysel")
+  ) return "Şahıs Şirketi";
+  if (
+    text.includes("limited") || text.includes("ltd") || text.includes("llc") ||
+    text.includes("ortaklı") || text.includes("ortak")
+  ) return "Limited Şirket";
+  if (
+    text.includes("anonim") || text.includes("aş") || text.includes("halka arz")
+  ) return "Anonim Şirket";
   return null;
 }
 
 function inferExperience(text: string): string | null {
-  if (text.includes("yeni mezun") || text.includes("ilk kez")) return "Başlangıç";
-  if (text.includes("tecrübeli") || text.includes("deneyimliyim")) return "Orta";
+  if (
+    text.includes("yeni mezun") || text.includes("ilk kez") || text.includes("hiç bilmiyorum") ||
+    text.includes("başlangıç") || text.includes("yeni başlıyorum") || text.includes("fikir aşamasında")
+  ) return "Başlangıç";
+  if (
+    text.includes("tecrübeli") || text.includes("deneyimliyim") || text.includes("yıldır") ||
+    text.includes("sektördeyim") || text.includes("çalışıyorum")
+  ) return "Orta";
   return null;
 }
 
 function inferFunding(text: string): string | null {
-  if (text.includes("hibe") || text.includes("destek") || text.includes("sermaye")) return "Dış Finansman İhtiyacı";
+  if (
+    text.includes("hibe") || text.includes("destek") || text.includes("sermaye") ||
+    text.includes("yatırım") || text.includes("finansman") || text.includes("kredi") ||
+    text.includes("kosgeb") || text.includes("tubitak") || text.includes("fon")
+  ) return "Dış Finansman İhtiyacı";
   return null;
 }
 
 function inferLegalConcerns(text: string): string[] {
   const concerns: string[] = [];
-  if (text.includes("vergi")) concerns.push("Vergi yükümlülükleri");
-  if (text.includes("sgk") || text.includes("bağkur")) concerns.push("SGK / Bağ-Kur");
-  if (text.includes("iade") || text.includes("cayma")) concerns.push("Tüketici yükümlülükleri");
+  if (text.includes("vergi") || text.includes("kdv") || text.includes("beyanname")) concerns.push("Vergi yükümlülükleri");
+  if (text.includes("sgk") || text.includes("bağkur") || text.includes("prim") || text.includes("sigorta")) concerns.push("SGK / Bağ-Kur");
+  if (text.includes("iade") || text.includes("cayma") || text.includes("tüketici")) concerns.push("Tüketici yükümlülükleri");
+  if (text.includes("muhasebe") || text.includes("mali müşavir") || text.includes("muhasebeci")) concerns.push("Muhasebe desteği");
+  if (text.includes("sözleşme") || text.includes("anlaşma") || text.includes("hukuk")) concerns.push("Hukuki belgeler");
   return concerns;
 }
 
-function buildNextActions(profile: ProfilingSnapshot): string[] {
-  const actions = ["Şirket tipinizi netleştirin", "Vergi ve SGK yükümlülüklerinizi listeleyin"];
-  if (profile.fundingNeed) {
-    actions.push("Size uygun hibe ve teşvik başlıklarını önceliklendirin");
+function buildNextActions(profile: ProfilingSnapshot, query: string): string[] {
+  const normalized = query.toLocaleLowerCase("tr-TR");
+  const actions: string[] = [];
+
+  if (normalized.includes("kosgeb") || normalized.includes("hibe") || normalized.includes("destek")) {
+    actions.push("KOSGEB'e online kayıt yapın ve Girişimcilik Eğitimi tarihlerini kontrol edin");
   }
-  return actions.slice(0, 3);
+  if (normalized.includes("şirket") || normalized.includes("kuruluş") || normalized.includes("açmak")) {
+    actions.push("MERSİS sistemi üzerinden şirket unvanı sorgulayın ve kuruluş sürecini başlatın");
+  }
+  if (normalized.includes("vergi") || normalized.includes("kdv") || normalized.includes("gelir")) {
+    actions.push("Bir Serbest Muhasebeci Mali Müşavir (SMMM) ile ön görüşme yapın");
+  }
+  if (normalized.includes("sgk") || normalized.includes("prim") || normalized.includes("bağkur")) {
+    actions.push("SGK web sitesinden 4/b (Bağ-Kur) prim hesaplayıcıyı kullanın");
+  }
+  if (normalized.includes("e-ticaret") || normalized.includes("online") || normalized.includes("satış")) {
+    actions.push("Hedef pazaryerinin satıcı başvuru gerekliliklerini inceleyin");
+  }
+
+  if (actions.length === 0) {
+    actions.push("Şirket tipinizi (Şahıs / Limited) netleştirin");
+    actions.push("Bir mali müşavir ile ön görüşme planlayın");
+  }
+  if (profile.fundingNeed) {
+    actions.push("Size uygun hibe ve teşvik programlarını (KOSGEB, TÜBİTAK) karşılaştırın");
+  }
+
+  return [...new Set(actions)].slice(0, 3);
 }
 
-async function generateAnswer(query: string, citations: Citation[], profile: ProfilingSnapshot): Promise<string> {
+async function generateAnswer(
+  query: string,
+  citations: Citation[],
+  profile: ProfilingSnapshot,
+  insufficientEvidence: boolean
+): Promise<string> {
   const apiKey = GEMINI_API_KEY.value();
   if (!apiKey) {
-    console.error("Gemini API anahtari bulunamadi. Fallback cevap donuluyor.");
+    console.error("[Chat] Gemini API anahtarı bulunamadı. Fallback cevap dönülüyor.");
     return fallbackAnswer(query, citations);
   }
 
   try {
     const client = new GoogleGenAI({ apiKey });
+
+    const contextLines: string[] = citations.length > 0
+      ? [
+          "Doğrulanmış mevzuat bağlamı:",
+          ...citations.map(
+            (c, i) =>
+              `${i + 1}. ${c.sourceName} — ${c.section ?? "Genel"}: ${c.snippet ?? ""}`
+          )
+        ]
+      : [
+          "Doğrudan eşleşen mevzuat bağlamı bulunamadı.",
+          "Genel Türk girişimcilik mevzuatı bilginden yararlanarak yönlendirici bir cevap ver.",
+          "Yasal kesinlik iddia etme; hangi konuların profesyonel doğrulama gerektirdiğini belirt."
+        ];
+
+    const evidenceNote = insufficientEvidence
+      ? "\nUYARI: Bağlam zayıf. Cevabın sonunda kullanıcıya hangi konularda mali müşavir veya avukat ile görüşmesi gerektiğini belirt."
+      : "";
+
     const prompt = [
-      "Bağlam:",
-      ...citations.map((citation, index) => `${index + 1}. ${citation.sourceName} - ${citation.section ?? "Genel"}: ${citation.snippet ?? ""}`),
+      ...contextLines,
       "",
       `Kullanıcı sorusu: ${query}`,
-      `Profil özeti: ${JSON.stringify(profile)}`
+      `Kullanıcı profili: ${JSON.stringify(profile)}`,
+      evidenceNote
     ].join("\n");
 
     const response = await client.models.generateContent({
@@ -281,21 +533,21 @@ async function generateAnswer(query: string, citations: Citation[], profile: Pro
 
     const generatedText = response.text?.trim();
     if (!generatedText) {
-      console.error("Gemini bos cevap dondurdu. Fallback cevap donuluyor.");
+      console.error("[Chat] Gemini boş cevap döndürdü. Fallback cevap dönülüyor.");
       return fallbackAnswer(query, citations);
     }
     return generatedText;
   } catch (error) {
-    console.error("Gemini cevap uretimi basarisiz oldu.", error);
+    console.error("[Chat] Gemini cevap üretimi başarısız.", error);
     return fallbackAnswer(query, citations);
   }
 }
 
 function fallbackAnswer(query: string, citations: Citation[]): string {
   if (citations.length === 0) {
-    return "Sorunuz için elimde yeterli doğrulanmış mevzuat bağlamı yok. İş fikrinizi, sektörünüzü ve şirket tipi tercihinizi biraz daha net yazarsanız güvenli bir yol haritası çıkarabilirim.";
+    return `"${query.slice(0, 60)}" sorunuz için doğrudan eşleşen mevzuat bağlamı bulunamadı. Şirket tipi, sektör ve hedeflerinizi belirtirseniz daha spesifik bir yol haritası sunabilirim. Ayrıca bir Serbest Muhasebeci Mali Müşavir (SMMM) ile ön görüşme yapmanızı öneririm.`;
   }
-  return `Sorunuz için en ilgili kaynaklara göre ilk öncelik, ${citations[0].sourceName} başlığındaki yükümlülükleri ve avantajları netleştirmek. Sonraki adımda şirket türü, vergi yükü ve destek uygunluğunu birlikte daraltabiliriz.`;
+  return `Sorunuz için en ilgili kaynak: "${citations[0].sourceName} — ${citations[0].section ?? "Genel"}". Bu başlığı daha ayrıntılı incelemenizi ve bir mali müşavir ile konuyu doğrulamanızı öneririm. Şirket türü, vergi yükü ve destek uygunluğunu birlikte daraltabiliriz; lütfen durumunuzu biraz daha açar mısınız?`;
 }
 
 function reportDownloadUrl(bucketName: string, storagePath: string, token: string): string {
@@ -364,6 +616,8 @@ function splitText(text: string, limit: number): string[] {
   return lines;
 }
 
+// ─── CALLABLE FUNCTIONS ───────────────────────────────────────────────────────
+
 export const extractProfileSnapshot = onCall(
   EXTRACT_PROFILE_RUNTIME,
   async (request) => {
@@ -414,25 +668,46 @@ export const sendChatMessage = onCall(
         profileDelta: payload.profileDelta ?? null,
         confidence: payload.confidence ?? 0,
         nextActions: payload.nextActions ?? [],
-        insufficientEvidence: (payload.confidence ?? 0) < 0.12
+        insufficientEvidence: (payload.confidence ?? 0) < 0.05
       };
     }
 
+    // ── Retrieval ────────────────────────────────────────────────────────────
     const retrieved = retrieveDocuments(text, 3);
     const citations: Citation[] = retrieved.map((doc) => ({
       sourceName: doc.sourceName,
       section: doc.section,
-      snippet: doc.text.slice(0, 220),
+      snippet: doc.text.slice(0, 400),
       sourceUrl: doc.sourceUrl
     }));
-    const confidence = retrieved.length
-      ? Number((retrieved.reduce((sum, item) => sum + item.score, 0) / retrieved.length).toFixed(2))
-      : 0.1;
-    const insufficientEvidence = retrieved.length === 0 || confidence < 0.12;
-    const profileDelta = buildProfileSnapshot(text, null);
-    const nextActions = buildNextActions(profileDelta);
-    const answer = await generateAnswer(text, citations, profileDelta);
 
+    const maxScore = retrieved.length
+      ? Math.max(...retrieved.map((d) => d.score))
+      : 0;
+    const avgConfidence = retrieved.length
+      ? Number((retrieved.reduce((sum, item) => sum + item.score, 0) / retrieved.length).toFixed(4))
+      : 0;
+    const insufficientEvidence = retrieved.length === 0 || maxScore < 0.05;
+
+    // ── Gözlemlenebilirlik ───────────────────────────────────────────────────
+    console.log("[Chat] Retrieval sonucu:", {
+      uid: uid.slice(0, 8),
+      sorguUzunlugu: text.length,
+      bulunanBelgeSayisi: retrieved.length,
+      belgePuanlari: retrieved.map((d) => ({ id: d.id, puan: d.score.toFixed(4) })),
+      maxPuan: maxScore.toFixed(4),
+      ortPuan: avgConfidence,
+      yetersizKanit: insufficientEvidence
+    });
+
+    // ── Profil ve Sonraki Adımlar ────────────────────────────────────────────
+    const profileDelta = buildProfileSnapshot(text, null);
+    const nextActions = buildNextActions(profileDelta, text);
+
+    // ── Gemini Cevap Üretimi ─────────────────────────────────────────────────
+    const answer = await generateAnswer(text, citations, profileDelta, insufficientEvidence);
+
+    // ── Firestore Yazma ──────────────────────────────────────────────────────
     await sessionRef.set(
       {
         id: sessionId,
@@ -469,7 +744,7 @@ export const sendChatMessage = onCall(
       timestamp: now,
       citations,
       profileDelta,
-      confidence,
+      confidence: avgConfidence,
       nextActions,
       requestId: clientRequestId,
       role: "assistant"
@@ -490,7 +765,7 @@ export const sendChatMessage = onCall(
       answer,
       citations,
       profileDelta,
-      confidence,
+      confidence: avgConfidence,
       nextActions,
       insufficientEvidence
     };
@@ -528,8 +803,9 @@ export const generateRoadmapReport = onCall(
       ? String(aiMessages.at(-1)?.text)
       : "Henüz doğrulanmış AI çıktısı oluşmadı.";
     const latestProfileSnapshot = sessionSnapshot.data()?.latestProfileSnapshot ?? null;
+    const lastUserMessage = messages.filter((m) => m.isFromUser).at(-1)?.text ?? "";
     const nextActions = latestProfileSnapshot
-      ? buildNextActions(latestProfileSnapshot as ProfilingSnapshot)
+      ? buildNextActions(latestProfileSnapshot as ProfilingSnapshot, lastUserMessage)
       : ["Şirket tipinizi kesinleştirin", "Vergi ve SGK yükümlülüklerinizi gözden geçirin"];
     const pdfBytes = await buildPdf("Girişim Hazırlık Raporu", summary, nextActions, messages);
 
