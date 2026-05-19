@@ -33,7 +33,7 @@ import org.koin.dsl.module
 
 fun initKoin(appDeclaration: KoinAppDeclaration = {}) =
     startKoin {
-        appDeclaration()
+        allowOverride(true)
         modules(
             coreModule,
             chatModule,
@@ -45,6 +45,7 @@ fun initKoin(appDeclaration: KoinAppDeclaration = {}) =
             roadmapModule,
             platformModule()
         )
+        appDeclaration()
     }
 
 // called by iOS etc
