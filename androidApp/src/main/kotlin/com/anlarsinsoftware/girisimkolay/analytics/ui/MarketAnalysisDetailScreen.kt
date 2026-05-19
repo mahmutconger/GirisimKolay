@@ -37,7 +37,6 @@ import androidx.compose.ui.unit.sp
 import com.anlarsinsoftware.girisimkolay.ui.theme.NavyPrimary
 import com.anlarsinsoftware.girisimkolay.ui.theme.EmeraldSecondary
 import com.anlarsinsoftware.girisimkolay.ui.theme.OutlineVariant
-import com.anlarsinsoftware.girisimkolay.ui.theme.SurfaceContainerLow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

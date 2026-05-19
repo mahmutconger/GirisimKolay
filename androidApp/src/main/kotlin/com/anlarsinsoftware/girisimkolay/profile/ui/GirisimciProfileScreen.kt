@@ -41,7 +41,6 @@ import com.anlarsinsoftware.girisimkolay.ui.theme.EmeraldSecondaryContainer
 import com.anlarsinsoftware.girisimkolay.ui.theme.OnEmeraldSecondaryContainer
 import com.anlarsinsoftware.girisimkolay.ui.theme.OutlineVariant
 import com.anlarsinsoftware.girisimkolay.ui.theme.SurfaceContainer
-import com.anlarsinsoftware.girisimkolay.ui.theme.SurfaceContainerLow
 
 import androidx.compose.material.icons.filled.Settings
 
