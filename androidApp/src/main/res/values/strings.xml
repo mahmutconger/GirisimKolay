@@ -1,3 +1,15 @@
 <resources>
-    <string name="app_name">GirisimKolay</string>
+    <string name="app_name">GirişimKolay</string>
+    <string name="roadmap_title">Yol Haritası &amp; Belgeler</string>
+    <string name="roadmap_journey_title">Girişim Serüveniniz</string>
+    <string name="roadmap_download_report">Girişim Hazırlık Raporunu İndir</string>
+    <string name="roadmap_generating_report">Rapor Üretiliyor&#8230;</string>
+    <string name="roadmap_send_to_expert">Mali Müşavir Onayına Gönder</string>
+    <string name="roadmap_sending_to_expert">Uzmana İletiliyor&#8230;</string>
+    <string name="roadmap_empty_steps">Henüz yol haritası adımları oluşturulmadı.</string>
+    <string name="roadmap_error_unauthenticated">İşlem yapmak için giriş yapmalısınız.</string>
+    <string name="roadmap_error_missing_session">Önce bir AI sohbet oturumu başlatmalısınız.</string>
+    <string name="roadmap_error_missing_token">Oturum süreniz dolmuş, lütfen tekrar giriş yapın.</string>
+    <string name="roadmap_error_generic">Bir hata oluştu, lütfen tekrar deneyin.</string>
+    <string name="roadmap_error_report_failed">Rapor üretilirken bir hata oluştu.</string>
 </resources>

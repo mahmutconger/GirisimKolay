@@ -4,7 +4,7 @@ import com.anlarsinsoftware.girisimkolay.auth.domain.entity.AuthUser
 import com.anlarsinsoftware.girisimkolay.auth.domain.repository.AuthRepository
 import com.anlarsinsoftware.girisimkolay.core.domain.SessionStateStore
 import com.anlarsinsoftware.girisimkolay.core.domain.Result
-import com.anlarsinsoftware.girisimkolay.roadmap.data.RoadmapLocalStore
+import com.anlarsinsoftware.girisimkolay.roadmap.data.source.RoadmapLocalStore
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.userProfileChangeRequest
 import com.google.firebase.firestore.FirebaseFirestore
