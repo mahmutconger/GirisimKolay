@@ -10,6 +10,7 @@ import com.anlarsinsoftware.girisimkolay.core.domain.Result
 import com.anlarsinsoftware.girisimkolay.profile.domain.entity.ProfilingSnapshot
 import com.anlarsinsoftware.girisimkolay.profile.domain.entity.UserProfile
 import com.anlarsinsoftware.girisimkolay.profile.domain.repository.ProfileRepository
+import com.anlarsinsoftware.girisimkolay.auth.domain.repository.AuthRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.functions.FirebaseFunctions
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.tasks.await
 
 class FirestoreProfileRepository(
+    private val authRepository: AuthRepository,
     private val auth: FirebaseAuth,
     private val firestore: FirebaseFirestore,
     private val functions: FirebaseFunctions,
@@ -31,7 +33,7 @@ class FirestoreProfileRepository(
     override fun observeProfile(): Flow<UserProfile?> = profileState.asStateFlow()
 
     override suspend fun refreshProfile(forceRefresh: Boolean): Result<UserProfile?> {
-        val uid = auth.currentUser?.uid ?: return Result.Success(null)
+        val uid = authRepository.currentUserId() ?: return Result.Success(null)
         if (!forceRefresh) {
             cache.get(uid)?.let {
                 profileState.value = it
@@ -52,17 +54,34 @@ class FirestoreProfileRepository(
             }
         } catch (exception: Exception) {
             logger.error("FirestoreProfileRepository", "Profile refresh failed", exception)
-            Result.Error(
-                message = "Profil bilgileri alınamadı.",
-                throwable = exception,
-                code = "profile_refresh_failed",
-                isRetryable = true
-            )
+            if (uid.startsWith("mock-")) {
+                val mockProfile = UserProfile(
+                    uid = uid,
+                    fullName = "Mustafa Conger",
+                    email = "demo@girisimkolay.com",
+                    companyType = "Anonim Şirket",
+                    entrepreneurType = "Teknoloji Girişimcisi",
+                    businessSector = "Bilişim / Yazılım",
+                    onboardingCompleted = true,
+                    createdAt = System.currentTimeMillis(),
+                    updatedAt = System.currentTimeMillis()
+                )
+                cache.put(uid, mockProfile)
+                profileState.value = mockProfile
+                Result.Success(mockProfile)
+            } else {
+                Result.Error(
+                    message = "Profil bilgileri alınamadı.",
+                    throwable = exception,
+                    code = "profile_refresh_failed",
+                    isRetryable = true
+                )
+            }
         }
     }
 
     override suspend fun updateProfile(profile: UserProfile): Result<UserProfile> {
-        val uid = auth.currentUser?.uid ?: profile.uid
+        val uid = authRepository.currentUserId() ?: profile.uid
         return try {
             val updated = profile.copy(
                 uid = uid,
@@ -74,12 +93,18 @@ class FirestoreProfileRepository(
             Result.Success(updated)
         } catch (exception: Exception) {
             logger.error("FirestoreProfileRepository", "Profile update failed", exception)
-            Result.Error(
-                message = "Profil güncellenemedi.",
-                throwable = exception,
-                code = "profile_update_failed",
-                isRetryable = true
-            )
+            if (uid.startsWith("mock-")) {
+                cache.put(uid, profile)
+                profileState.value = profile
+                Result.Success(profile)
+            } else {
+                Result.Error(
+                    message = "Profil güncellenemedi.",
+                    throwable = exception,
+                    code = "profile_update_failed",
+                    isRetryable = true
+                )
+            }
         }
     }
 

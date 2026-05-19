@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "440513871198",
+    "project_id": "girisimkolay",
+    "storage_bucket": "girisimkolay.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:440513871198:android:f4eb1f458c58251f1e23cf",
+        "android_client_info": {
+          "package_name": "com.anlarsinsoftware.girisimkolay"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "440513871198-bnsqj71mra7foq1q8j5oj24e2iseggt0.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.anlarsinsoftware.girisimkolay",
+            "certificate_hash": "c5e3427a80c4cdb5e8e75bd4fb7b90644e9dac48"
+          }
+        },
+        {
+          "client_id": "440513871198-0okptreq0uqqtfkjp1m82t5cuvacdfdq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCHRbw3nrNcdXU3-nEbY70Lu2gxpr-AI04"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "440513871198-0okptreq0uqqtfkjp1m82t5cuvacdfdq.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "440513871198-lhijkg1sup9o06l3ubdifevupld7ukpu.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.anlarsinsoftware.girisimkolay"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

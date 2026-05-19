@@ -50,6 +50,7 @@ val appModule = module {
     single<AuthRepository> { FirebaseAuthRepository(get(), get(), get(), get()) }
     single<ProfileRepository> {
         FirestoreProfileRepository(
+            authRepository = get(),
             auth = get(),
             firestore = get(),
             functions = get(),
