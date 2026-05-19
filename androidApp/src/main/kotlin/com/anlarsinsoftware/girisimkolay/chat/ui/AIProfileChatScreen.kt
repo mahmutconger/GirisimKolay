@@ -41,7 +41,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
+import com.anlarsinsoftware.girisimkolay.chat.domain.entity.ChatMode
 import com.anlarsinsoftware.girisimkolay.chat.domain.entity.Message
 import com.anlarsinsoftware.girisimkolay.chat.viewmodel.ChatViewModel
 import com.anlarsinsoftware.girisimkolay.ui.theme.NavyPrimary
@@ -53,6 +53,7 @@ import com.anlarsinsoftware.girisimkolay.ui.theme.OutlineVariant
 import com.anlarsinsoftware.girisimkolay.ui.theme.SurfaceContainerLow
 import com.anlarsinsoftware.girisimkolay.ui.theme.SurfaceContainerLowest
 import com.anlarsinsoftware.girisimkolay.ui.theme.OnSurfaceVariant
+import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
@@ -67,6 +68,7 @@ fun AIProfileChatScreen(
 ) {
     val messages by viewModel.messages.collectAsState()
     val isTyping by viewModel.isTyping.collectAsState()
+    val selectedMode by viewModel.selectedMode.collectAsState()
     var inputText by remember { mutableStateOf("") }
     val showWelcome = messages.size <= 1 && messages.none { it.isFromUser }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -138,43 +140,94 @@ fun AIProfileChatScreen(
             )
         }
     ) { padding ->
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .background(Color(0xFFFBF9FB))
-                .padding(horizontal = 20.dp),
-            contentPadding = PaddingValues(top = 16.dp, bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            if (showWelcome) {
-                item {
-                    WelcomeStateView()
-                }
-            }
+            ChatModeSelector(
+                selectedMode = selectedMode,
+                onModeSelected = viewModel::selectMode
+            )
 
-            items(messages) { message ->
-                MessageBubble(
-                    message = message,
-                    onActionClick = { action ->
-                        when {
-                            action.contains("Rapor", ignoreCase = true) -> onNavigateToRoadmap()
-                            action.contains("Uzman", ignoreCase = true) -> onAskExpert("financial")
-                            action.contains("Detay", ignoreCase = true) -> inputText = "Bu konuyu detaylandırır mısın?"
-                            else -> scope.launch { snackbarHostState.showSnackbar(action) }
-                        }
-                    },
-                    onCitationClick = { source ->
-                        scope.launch { snackbarHostState.showSnackbar("Kaynak: $source") }
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(horizontal = 20.dp),
+                contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                if (showWelcome) {
+                    item {
+                        WelcomeStateView()
                     }
-                )
-            }
+                }
 
-            if (isTyping) {
-                item {
-                    TypingIndicatorBubble()
+                items(messages) { message ->
+                    MessageBubble(
+                        message = message,
+                        onActionClick = { action ->
+                            when {
+                                action.contains("Rapor", ignoreCase = true) -> onNavigateToRoadmap()
+                                action.contains("Uzman", ignoreCase = true) -> onAskExpert("financial")
+                                action.contains("Detay", ignoreCase = true) -> inputText = "Bu konuyu detaylandırır mısın?"
+                                else -> scope.launch { snackbarHostState.showSnackbar(action) }
+                            }
+                        },
+                        onCitationClick = { source ->
+                            scope.launch { snackbarHostState.showSnackbar("Kaynak: $source") }
+                        }
+                    )
+                }
+
+                if (isTyping) {
+                    item {
+                        TypingIndicatorBubble()
+                    }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ChatModeSelector(
+    selectedMode: ChatMode,
+    onModeSelected: (ChatMode) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White)
+            .padding(horizontal = 20.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        ChatMode.entries.forEach { mode ->
+            FilterChip(
+                modifier = Modifier.weight(1f),
+                selected = selectedMode == mode,
+                onClick = { onModeSelected(mode) },
+                label = {
+                    Text(
+                        text = mode.displayName,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1
+                    )
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = NavyPrimaryContainer,
+                    selectedLabelColor = NavyPrimary
+                ),
+                border = FilterChipDefaults.filterChipBorder(
+                    enabled = true,
+                    selected = selectedMode == mode,
+                    borderColor = OutlineVariant,
+                    selectedBorderColor = NavyPrimary
+                )
+            )
         }
     }
 }

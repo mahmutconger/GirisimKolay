@@ -38,7 +38,8 @@ data class ChatResponseMessageDto(
     @SerialName("citations") val citations: List<CitationDto> = emptyList(),
     @SerialName("profile_delta") val profileDelta: ProfilingSnapshotDto? = null,
     @SerialName("confidence") val confidence: Double? = null,
-    @SerialName("next_actions") val nextActions: List<String> = emptyList()
+    @SerialName("next_actions") val nextActions: List<String> = emptyList(),
+    @SerialName("mode") val mode: String = "NORMAL"
 )
 
 @Serializable
