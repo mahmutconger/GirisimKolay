@@ -21,14 +21,10 @@ import com.anlarsinsoftware.girisimkolay.profile.data.repository.MockProfileRepo
 import com.anlarsinsoftware.girisimkolay.profile.domain.repository.ProfileRepository
 import com.anlarsinsoftware.girisimkolay.profile.domain.usecase.LoadProfile
 import com.anlarsinsoftware.girisimkolay.profile.domain.usecase.SaveProfile
-import com.anlarsinsoftware.girisimkolay.roadmap.data.repository.LiveRoadmapRepository
-import com.anlarsinsoftware.girisimkolay.roadmap.data.source.RoadmapLocalStore
+import com.anlarsinsoftware.girisimkolay.roadmap.data.repository.MockRoadmapRepository
 import com.anlarsinsoftware.girisimkolay.roadmap.domain.repository.DocumentRepository
 import com.anlarsinsoftware.girisimkolay.roadmap.domain.repository.RoadmapRepository
 import com.anlarsinsoftware.girisimkolay.roadmap.viewmodel.RoadmapViewModel
-import com.anlarsinsoftware.girisimkolay.auth.domain.repository.AuthRepository
-import com.anlarsinsoftware.girisimkolay.core.domain.BearerTokenProvider
-import io.ktor.client.HttpClient
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.factoryOf
@@ -88,18 +84,7 @@ val communityModule = module {
 }
 
 val roadmapModule = module {
-    single<RoadmapRepository> {
-        LiveRoadmapRepository(
-            authRepository = get(),
-            httpClient = get(),
-            baseUrl = "https://api.girisimkolay.com", // TODO: Move to config
-            chatRepository = get(),
-            authTokenProvider = get(),
-            roadmapLocalStore = get(),
-            clock = get(),
-            logger = get()
-        )
-    }
+    single<RoadmapRepository> { MockRoadmapRepository(get(), get()) }
     single<DocumentRepository> { get<RoadmapRepository>() }
     factoryOf(::RoadmapViewModel)
 }

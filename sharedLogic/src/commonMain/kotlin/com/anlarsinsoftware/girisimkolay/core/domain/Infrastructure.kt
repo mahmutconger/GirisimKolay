@@ -30,10 +30,6 @@ interface Logger {
     fun error(tag: String, message: String, throwable: Throwable? = null)
 }
 
-interface BearerTokenProvider {
-    suspend fun getFreshToken(): String?
-}
-
 interface SessionStateStore {
     fun getActiveSessionId(): String?
     fun saveActiveSessionId(sessionId: String)

@@ -44,6 +44,7 @@ dependencies {
 }
 
 android {
+    val useFirebaseEmulators = providers.gradleProperty("useFirebaseEmulators").orElse("false").get()
     namespace = "com.anlarsinsoftware.girisimkolay"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
@@ -67,7 +68,7 @@ android {
         }
         getByName("debug") {
             buildConfigField("String", "APP_ENVIRONMENT", "\"development\"")
-            buildConfigField("boolean", "USE_FIREBASE_EMULATORS", "true")
+            buildConfigField("boolean", "USE_FIREBASE_EMULATORS", useFirebaseEmulators)
         }
         create("staging") {
             initWith(getByName("debug"))
