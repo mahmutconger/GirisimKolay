@@ -238,7 +238,7 @@ fun ChatInputBar(
                 )
             )
             Spacer(modifier = Modifier.width(8.dp))
-            
+
             AnimatedVisibility(visible = inputText.isNotBlank()) {
                 IconButton(
                     onClick = onSend,
@@ -252,7 +252,7 @@ fun ChatInputBar(
                     )
                 }
             }
-            
+
             AnimatedVisibility(visible = inputText.isBlank()) {
                 IconButton(
                     onClick = { /* Handle Voice Input */ },
