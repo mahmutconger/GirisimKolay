@@ -1,6 +1,7 @@
 package com.anlarsinsoftware.girisimkolay
 
 import android.app.Application
+import android.util.Log
 import com.anlarsinsoftware.girisimkolay.di.initKoin
 import com.anlarsinsoftware.girisimkolay.di.appModule
 import com.anlarsinsoftware.girisimkolay.firebase.FirebaseRuntimeConfig
@@ -16,6 +17,7 @@ class GirisimKolayApp : Application() {
     override fun onCreate() {
         super.onCreate()
         FirebaseApp.initializeApp(this)
+        Log.i("GirisimKolayApp", "Firebase emulators enabled: ${BuildConfig.USE_FIREBASE_EMULATORS}, environment: ${BuildConfig.APP_ENVIRONMENT}")
         if (BuildConfig.USE_FIREBASE_EMULATORS) {
             FirebaseAuth.getInstance().useEmulator(FirebaseRuntimeConfig.EMULATOR_HOST, FirebaseRuntimeConfig.AUTH_PORT)
             FirebaseFirestore.getInstance().useEmulator(FirebaseRuntimeConfig.EMULATOR_HOST, FirebaseRuntimeConfig.FIRESTORE_PORT)
@@ -23,6 +25,7 @@ class GirisimKolayApp : Application() {
                 .useEmulator(FirebaseRuntimeConfig.EMULATOR_HOST, FirebaseRuntimeConfig.FUNCTIONS_PORT)
             FirebaseStorage.getInstance()
                 .useEmulator(FirebaseRuntimeConfig.EMULATOR_HOST, FirebaseRuntimeConfig.STORAGE_PORT)
+            Log.w("GirisimKolayApp", "Firebase emulator endpoints are active on ${FirebaseRuntimeConfig.EMULATOR_HOST}.")
         }
         initKoin {
             androidLogger()

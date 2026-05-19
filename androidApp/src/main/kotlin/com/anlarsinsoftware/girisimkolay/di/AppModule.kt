@@ -41,9 +41,9 @@ val appModule = module {
     single { FirebaseFunctions.getInstance(FirebaseRuntimeConfig.REGION) }
     single<SessionStateStore> { ChatSessionLocalStore(get()) }
     single<RoadmapLocalStore> { AndroidRoadmapLocalStore(get()) }
-    single { FirebaseFunctionsChatDataSource(get()) }
+    single { FirebaseFunctionsChatDataSource(get(), get()) }
     single { FirestoreChatHistoryDataSource(get()) }
-    single { FirebaseFunctionsReportDataSource(get()) }
+    single { FirebaseFunctionsReportDataSource(get(), get()) }
     single { FirestoreReportDataSource(get()) }
 
     // ── Auth data layer ────────────────────────────────────────
