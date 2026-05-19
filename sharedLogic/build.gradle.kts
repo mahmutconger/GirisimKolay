@@ -43,12 +43,14 @@ kotlin {
             implementation(libs.ktor.client.websockets)
             implementation(libs.ktor.client.logging)
             implementation(libs.koin.core)
+            implementation(libs.androidx.lifecycle.viewmodel)
         }
         androidMain.dependencies {
             implementation(libs.ktor.client.android)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            implementation(libs.kotlinx.coroutines.test)
         }
     }
 }
