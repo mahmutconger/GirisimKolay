@@ -40,15 +40,16 @@ const REPORT_RUNTIME = {
   minInstances: 0
 };
 
-const SYSTEM_PROMPT = `Sen GirişimKolay'ın yapay zeka iş danışmanısın. Türkiye'de girişimcilik, şirket kuruluşu, vergi, SGK, KOSGEB destekleri ve e-ticaret konularında yardımcı oluyorsun.
+const SYSTEM_PROMPT = `Sen GirişimKolay'ın yapay zeka iş danışmanısın. Türkiye'de girişimcilik, şirket kuruluşu, vergi, SGK, KOSGEB destekleri ve e-ticaret konularında uzman seviyesinde yardımcı oluyorsun.
 
 Kurallar:
 - Her zaman Türkçe cevap ver.
-- Sana verilen bağlam belgelerine dayan; belgelerde olmayan bilgiler için "bu konuyu bir uzmanla doğrulaman önerilir" de.
-- Eğer bağlam zayıfsa, genel bilginden yararlan ama yasal kesinlik iddia etme; cevabın sonunda profesyonel destek öner.
-- Cevaplar kısa, net ve uygulanabilir olsun. Madde madde listeler kullan.
+- Kamuya açık mevzuat bilgilerini (şirket kuruluş prosedürleri, KOSGEB program detayları, vergi eşikleri, SGK oranları, MERSİS süreci vb.) doğrudan ve güvenle paylaş.
+- Genel prosedürler ve maliyetler için "uzman öner" deme — bu bilgiler herkesin erişebileceği kamuya açık bilgilerdir.
+- Sadece kişiye özel vergi planlaması, hukuki temsil veya bireysel muhasebe danışmanlığı gerektiren durumlarda SMMM/avukat yönlendirmesi yap.
+- Cevaplar somut, net ve uygulanabilir olsun. Mümkünse rakamlar, süreler ve adımlar ver.
 - Kullanıcıya bir sonraki somut adımı mutlaka söyle.
-- Asla boş cevap dönderme; her zaman en azından yönlendirici bir cevap üret.`;
+- Asla boş cevap döndürme; her zaman yönlendirici ve işe yarar bir cevap üret.`;
 
 type ProfilingSnapshot = {
   businessIdea?: string | null;
@@ -512,24 +513,37 @@ function modeInstruction(mode: ChatMode): string {
   if (mode === "DEEP_RESEARCH") {
     return [
       "MOD: Derin Tarama.",
-      "Öncelik, kaynakların ne söylediğini dikkatli ve temkinli özetlemektir.",
-      "Belge dışı kesin cevap verme; kanıt zayıfsa bunu açıkça söyle.",
-      "Cevap formatı: Kısa bulgu, kaynaklara göre değerlendirme, kontrol edilmesi gereken noktalar."
+      "ZORUNLU KURAL: Her iddia için köşeli parantez içinde kaynak numarası göster → [1], [2] vb.",
+      "ZORUNLU KURAL: Kaynaklarda bulunmayan bilgi için tam olarak şunu yaz: 'Bu konuya ilişkin doğrulanmış veri bulunmamaktadır.' Asla tahmin etme.",
+      "Cevabını tam olarak aşağıdaki 3 bölümle yaz:",
+      "**Kaynakların Özeti:** (her madde [N] ile etiketlenmiş, kaynakta ne yazıyor)",
+      "**Değerlendirme:** (kaynaklara dayalı, tarafsız yorum)",
+      "**Doğrulama Gerektiren Noktalar:** (profesyonel teyit gereken hususlar, belirsiz kalan konular)"
     ].join("\n");
   }
   if (mode === "ROADMAP") {
     return [
       "MOD: Yol Haritası.",
-      "Kullanıcının amacına göre uygulanabilir, resmi kaynaklarla uyumlu bir plan üret.",
-      "Cevabı şu başlıklarla ver: Kısa Değerlendirme, Adım Adım Yol Haritası, Hazırlanacak Belgeler, Dikkat Edilecek Noktalar, Sonraki En Mantıklı Adım.",
-      "Yasal kesinlik iddia etme; kritik vergi ve şirket kuruluşu konularında SMMM doğrulaması öner."
+      "Cevabını TAM OLARAK aşağıdaki 5 markdown başlığıyla yaz. Hiçbir başlığı atlama ve sırasını değiştirme:",
+      "## Kısa Değerlendirme",
+      "(1-2 cümle: kullanıcının mevcut durumu ve amacı nedir)",
+      "## Adım Adım Yol Haritası",
+      "(numaralı liste; her madde somut ve uygulanabilir — süre ve yaklaşık maliyet bilgisi varsa ekle)",
+      "## Hazırlanacak Belgeler",
+      "(madde listesi: belge adı — nereden / nasıl alınır)",
+      "## Dikkat Edilecek Noktalar",
+      "(madde listesi: mevzuat riskleri, dikkat gerektiren vergi veya yasal yükümlülükler)",
+      "## Sonraki En Mantıklı Adım",
+      "(tek cümle: şu anda yapılacak en önemli işlem)",
+      "Prosedürler, maliyetler ve süreler hakkında somut bilgi ver. SMMM yönlendirmesini sadece gerçekten kişiye özel muhasebe/hukuk durumlarında ekle, genel bilgiler için ekleme."
     ].join("\n");
   }
   return [
     "MOD: Normal.",
-    "Kullanıcının sorusuna doğrudan, pratik ve girişimci odaklı cevap ver.",
-    "Cevap formatı doğal olsun: kısa cevap, önemli noktalar, önerilen sonraki adım.",
-    "Kullanıcıyı sadece belge okumaya bırakma; kaynaklara dayalı açıklama yap."
+    "Kullanıcının sorusuna doğrudan ve pratik cevap ver. Genel mevzuat bilgilerini güvenle paylaş.",
+    "SMMM veya uzman yönlendirmesi yapma — sadece gerçekten kişiye özel muhasebe kararı gerektiren durumlarda ekle.",
+    "Cevap formatı: kısa ve net özet, önemli noktalar (madde listesi), bir sonraki somut adım.",
+    "Kullanıcıyı sadece belge okumaya bırakma; bilgiyi doğrudan ver."
   ].join("\n");
 }
 
@@ -555,20 +569,21 @@ async function generateAnswer(
 
     const contextLines: string[] = citations.length > 0
       ? [
-          "Doğrulanmış mevzuat bağlamı:",
+          "İlgili mevzuat bağlamı:",
           ...citations.map(
             (c, i) =>
               `${i + 1}. ${c.sourceName} — ${c.section ?? "Genel"}: ${c.snippet ?? ""}`
           )
         ]
       : [
-          "Doğrudan eşleşen mevzuat bağlamı bulunamadı.",
-          "Genel Türk girişimcilik mevzuatı bilginden yararlanarak yönlendirici bir cevap ver.",
-          "Yasal kesinlik iddia etme; hangi konuların profesyonel doğrulama gerektirdiğini belirt."
+          "Doğrudan eşleşen kaynak bulunamadı.",
+          "Genel Türk girişimcilik mevzuatı ve kamu bilgisinden yararlanarak somut, uygulanabilir bir cevap ver."
         ];
 
     const evidenceNote = insufficientEvidence
-      ? "\nUYARI: Bağlam zayıf. Cevabın sonunda kullanıcıya hangi konularda mali müşavir veya avukat ile görüşmesi gerektiğini belirt."
+      ? (mode === "DEEP_RESEARCH"
+          ? "\nUYARI: Doğrudan eşleşen belge bulunamadı. Sadece emin olduğun kamuya açık bilgileri ver; belirsiz noktalarda bunu açıkça belirt."
+          : "\nNOT: Doğrudan eşleşen belge bulunamadı. Genel Türk mevzuatı bilginden yararlanarak somut ve uygulanabilir cevap ver.")
       : "";
 
     const prompt = [
@@ -581,11 +596,16 @@ async function generateAnswer(
       evidenceNote
     ].join("\n");
 
+    const temperature =
+      mode === "DEEP_RESEARCH" ? 0.1 :
+      mode === "ROADMAP" ? 0.3 : 0.7;
+
     const response = await client.models.generateContent({
       model: MODEL_NAME,
       contents: prompt,
       config: {
-        systemInstruction: SYSTEM_PROMPT
+        systemInstruction: SYSTEM_PROMPT,
+        temperature
       }
     });
 
@@ -718,6 +738,7 @@ export const sendChatMessage = onCall(
 
     const db = admin.firestore();
     const now = Date.now();
+    const isNewSession = !data.sessionId?.trim();
     const sessionId = data.sessionId?.trim() || `session_${uid}_${now}`;
     const sessionRef = db.collection("users").doc(uid).collection("chatSessions").doc(sessionId);
     const userMessageId = `user_${clientRequestId}`;
@@ -787,10 +808,9 @@ export const sendChatMessage = onCall(
       {
         id: sessionId,
         uid,
-        title: text.slice(0, 80),
+        ...(isNewSession ? { title: text.slice(0, 60), createdAt: now } : {}),
         status: "active",
-        createdAt: now,
-        updatedAt: now,
+        updatedAt: now + 1,
         lastMessageAt: now,
         latestProfileSnapshot: profileDelta
       },
@@ -817,7 +837,7 @@ export const sendChatMessage = onCall(
       sessionId,
       text: answer,
       isFromUser: false,
-      timestamp: now,
+      timestamp: now + 1,
       citations,
       profileDelta,
       confidence: avgConfidence,
