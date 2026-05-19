@@ -11,6 +11,7 @@ const REGION = "europe-west1";
 const MODEL_NAME = "gemini-1.5-pro";
 const EXTRACT_PROFILE_RUNTIME = {
   region: REGION,
+  invoker: "public" as const,
   secrets: [GEMINI_API_KEY],
   memory: "256MiB" as const,
   timeoutSeconds: 20,
@@ -20,6 +21,7 @@ const EXTRACT_PROFILE_RUNTIME = {
 };
 const CHAT_RUNTIME = {
   region: REGION,
+  invoker: "public" as const,
   secrets: [GEMINI_API_KEY],
   memory: "512MiB" as const,
   timeoutSeconds: 30,
@@ -29,6 +31,7 @@ const CHAT_RUNTIME = {
 };
 const REPORT_RUNTIME = {
   region: REGION,
+  invoker: "public" as const,
   secrets: [GEMINI_API_KEY],
   memory: "1GiB" as const,
   timeoutSeconds: 60,
