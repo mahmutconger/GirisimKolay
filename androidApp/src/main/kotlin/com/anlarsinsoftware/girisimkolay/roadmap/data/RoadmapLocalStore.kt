@@ -1,19 +1,20 @@
 package com.anlarsinsoftware.girisimkolay.roadmap.data
 
 import android.content.Context
+import com.anlarsinsoftware.girisimkolay.roadmap.data.source.RoadmapLocalStore
 
-class RoadmapLocalStore(
+class AndroidRoadmapLocalStore(
     context: Context
-) {
+) : RoadmapLocalStore {
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-    fun getLatestReportId(): String? = prefs.getString(KEY_LATEST_REPORT_ID, null)
+    override fun getLatestReportId(): String? = prefs.getString(KEY_LATEST_REPORT_ID, null)
 
-    fun saveLatestReportId(reportId: String) {
+    override fun saveLatestReportId(reportId: String) {
         prefs.edit().putString(KEY_LATEST_REPORT_ID, reportId).apply()
     }
 
-    fun clear() {
+    override fun clear() {
         prefs.edit().remove(KEY_LATEST_REPORT_ID).apply()
     }
 
