@@ -18,8 +18,9 @@ import com.anlarsinsoftware.girisimkolay.core.domain.SessionStateStore
 import com.anlarsinsoftware.girisimkolay.dashboard.viewmodel.DashboardViewModel
 import com.anlarsinsoftware.girisimkolay.network.createHttpClient
 import com.anlarsinsoftware.girisimkolay.profile.domain.repository.ProfileRepository
-import com.anlarsinsoftware.girisimkolay.roadmap.data.LiveRoadmapRepository
-import com.anlarsinsoftware.girisimkolay.roadmap.data.RoadmapLocalStore
+import com.anlarsinsoftware.girisimkolay.roadmap.data.AndroidRoadmapLocalStore
+import com.anlarsinsoftware.girisimkolay.roadmap.data.repository.LiveRoadmapRepository
+import com.anlarsinsoftware.girisimkolay.roadmap.data.source.RoadmapLocalStore
 import com.anlarsinsoftware.girisimkolay.roadmap.domain.repository.DocumentRepository
 import com.anlarsinsoftware.girisimkolay.roadmap.domain.repository.RoadmapRepository
 import com.anlarsinsoftware.girisimkolay.roadmap.viewmodel.RoadmapViewModel
@@ -36,7 +37,7 @@ val appModule = module {
     single { FirebaseFirestore.getInstance() }
     single<BearerTokenProvider> { FirebaseIdTokenProvider(get()) }
     single<SessionStateStore> { ChatSessionLocalStore(get()) }
-    single { RoadmapLocalStore(get()) }
+    single<RoadmapLocalStore> { AndroidRoadmapLocalStore(get()) }
 
     // ── Ktor HTTP client (singleton — one client for the whole app) ──
     single { createHttpClient(enableLogging = BuildConfig.DEBUG) }
@@ -70,7 +71,7 @@ val appModule = module {
 
     single<RoadmapRepository> {
         LiveRoadmapRepository(
-            auth = get(),
+            authRepository = get(),
             httpClient = get(),
             baseUrl = BuildConfig.BASE_URL,
             chatRepository = get(),
