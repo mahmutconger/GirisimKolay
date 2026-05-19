@@ -44,7 +44,8 @@ import org.koin.androidx.compose.koinViewModel
 fun CommunityHubScreen(
     viewModel: CommunityViewModel = koinViewModel(),
     onNavigateToNotifications: () -> Unit,
-    onNavigateToAdviceDetail: (String) -> Unit
+    onNavigateToAdviceDetail: (String) -> Unit,
+    onNavigateToExpertProfile: (String) -> Unit
 ) {
     val networkPosts by viewModel.networkPosts.collectAsState()
     val expertPosts by viewModel.expertPosts.collectAsState()
@@ -239,7 +240,10 @@ fun CommunityHubScreen(
                                 Spacer(modifier = Modifier.height(12.dp))
                                 
                                 // Expert profile & short answer block
-                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.clickable { onNavigateToExpertProfile("kemal") }
+                                ) {
                                     AsyncImage(
                                         model = "https://lh3.googleusercontent.com/aida-public/AB6AXuDYZGEek9N6k7LocAcnjuFlQUaq9hl_WdH2BP_Eapf6kHvMQcWbPsLVzSpNGM4gOtF3cEIm01EogVbkgaJFjAGhQS3i-QcDBG1ZW8TKqJD-Gncyh9dveDsZgz5Tj9sL9hALlEa6_n2kIxo0QaHl9OO9u42pCgvizxosCjGLKf9TC86q3Dko3HDwYeNw0nnfjQKsbq6VwsfTBs7AktIWRxXuhsl-Wd3wIJB_L0kK4ynBBXbrmEBc1dp0aNj3G-Dm4PW-v9ROnKbYRsk",
                                         contentDescription = "Kemal D.",
@@ -290,7 +294,8 @@ fun CommunityHubScreen(
                         "https://lh3.googleusercontent.com/aida-public/AB6AXuC4eqP3coFOwZn_jkwbntho5uiM37I2_qpIwytnC8Um2wQ4tYEc19-hDUKR3E66oFS8tLlYzb-k3WPthzAj8AzNG5BDOtpPshESlJpY9xnv6JOcsRB5z3fhQX6rjjcR2wkw5WkrvGF2P4lwkjzDx6rJ_x6pQw86YgoygbHcUePFaivZIlAfwlpfIRLT1KIVqcF8UpN75BEl83xBOV3pFhBaCBhS0_-AHwkgAIzjOUJ-twGVkNzvCVc-6kmu-8uDg3uI-E7X7Jx4_iE"
                     } else {
                         "https://lh3.googleusercontent.com/aida-public/AB6AXuAFoKXs-uFg2YP3yvJZ2hobDmpj7SC31KJQkVlMWr8HdJ22Zt25Yyn6kBuMngzxalAoZCxDDwo07oksDc874G8SY-wRBPo4uRoDDJq2yUamo5s0x_xuizpjGFrUaCV7wDJMTy0DLI9wsp0c_kqzDSun0ouF-3tPNSFegxavSJHajL51o2LJMVRxT1xh60FZMCmXdDHjSgdQn-EHsT288DSPUoR2LyR2O7D5EXzekiIv-E1QZh36vxu_ShLwSUu57ohend6-FAoinYA"
-                    }
+                    },
+                    onNavigateToExpertProfile = onNavigateToExpertProfile
                 )
             }
         }
@@ -298,7 +303,7 @@ fun CommunityHubScreen(
 }
 
 @Composable
-fun CommunityPostCard(post: CommunityPost, avatarUrl: String) {
+fun CommunityPostCard(post: CommunityPost, avatarUrl: String, onNavigateToExpertProfile: (String) -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -313,7 +318,15 @@ fun CommunityPostCard(post: CommunityPost, avatarUrl: String) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.clickable {
+                        if (post.isVerifiedExpert) {
+                            val expertId = if (post.authorName.contains("Kemal")) "kemal" else "selin"
+                            onNavigateToExpertProfile(expertId)
+                        }
+                    }
+                ) {
                     AsyncImage(
                         model = avatarUrl,
                         contentDescription = post.authorName,
