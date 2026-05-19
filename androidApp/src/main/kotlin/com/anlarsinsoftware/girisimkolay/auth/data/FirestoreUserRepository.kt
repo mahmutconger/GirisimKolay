@@ -1,9 +1,7 @@
 package com.anlarsinsoftware.girisimkolay.auth.data
 
 import com.anlarsinsoftware.girisimkolay.chat.data.dto.ProfileExtractRequest
-import com.anlarsinsoftware.girisimkolay.chat.data.dto.ProfileExtractResponse
 import com.anlarsinsoftware.girisimkolay.chat.data.dto.ProfilingSnapshotDto
-import com.anlarsinsoftware.girisimkolay.core.domain.BearerTokenProvider
 import com.anlarsinsoftware.girisimkolay.core.data.MemoryCache
 import com.anlarsinsoftware.girisimkolay.core.domain.Clock
 import com.anlarsinsoftware.girisimkolay.core.domain.Logger
@@ -13,13 +11,7 @@ import com.anlarsinsoftware.girisimkolay.profile.domain.entity.UserProfile
 import com.anlarsinsoftware.girisimkolay.profile.domain.repository.ProfileRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
-import io.ktor.http.contentType
+import com.google.firebase.functions.FirebaseFunctions
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,9 +20,7 @@ import kotlinx.coroutines.tasks.await
 class FirestoreProfileRepository(
     private val auth: FirebaseAuth,
     private val firestore: FirebaseFirestore,
-    private val httpClient: HttpClient,
-    private val baseUrl: String,
-    private val authTokenProvider: BearerTokenProvider,
+    private val functions: FirebaseFunctions,
     clock: Clock,
     private val logger: Logger
 ) : ProfileRepository {
@@ -96,20 +86,19 @@ class FirestoreProfileRepository(
         freeformText: String,
         currentSnapshot: ProfilingSnapshot?
     ): Result<ProfilingSnapshot> {
-        val token = authTokenProvider.getFreshToken()
-            ?: return Result.Error(message = "Kimlik doğrulama gerekli.", code = "missing_token")
         return try {
-            val response: ProfileExtractResponse = httpClient.post("$baseUrl/api/v1/profile/extract") {
-                contentType(ContentType.Application.Json)
-                headers.append(HttpHeaders.Authorization, "Bearer $token")
-                setBody(
-                    ProfileExtractRequest(
-                        text = freeformText,
-                        currentProfile = currentSnapshot?.toDto()
+            val result = functions
+                .getHttpsCallable("extractProfileSnapshot")
+                .call(
+                    mapOf(
+                        "text" to freeformText,
+                        "currentProfile" to currentSnapshot?.toDto()?.toMap()
                     )
                 )
-            }.body()
-            Result.Success(response.snapshot.toDomain())
+                .await()
+                .data as? Map<*, *> ?: error("Malformed profile extract response.")
+            val snapshotMap = result["snapshot"] as? Map<*, *> ?: error("Missing snapshot payload.")
+            Result.Success(snapshotMap.toDomain())
         } catch (exception: Exception) {
             logger.error("FirestoreProfileRepository", "Profile extraction failed", exception)
             Result.Error(
@@ -154,17 +143,28 @@ class FirestoreProfileRepository(
         legalConcerns = legalConcerns
     )
 
-    private fun ProfilingSnapshotDto.toDomain(): ProfilingSnapshot = ProfilingSnapshot(
-        businessIdea = businessIdea,
-        businessSector = businessSector,
-        preferredCompanyType = preferredCompanyType,
-        experienceLevel = experienceLevel,
-        fundingNeed = fundingNeed,
-        legalConcerns = legalConcerns
-    )
-
     private companion object {
         const val USERS_COLLECTION = "users"
         const val PROFILE_CACHE_TTL_MS = 5 * 60 * 1000L
     }
 }
+
+private fun ProfilingSnapshotDto.toMap(): Map<String, Any?> = mapOf(
+    "businessIdea" to businessIdea,
+    "businessSector" to businessSector,
+    "preferredCompanyType" to preferredCompanyType,
+    "experienceLevel" to experienceLevel,
+    "fundingNeed" to fundingNeed,
+    "legalConcerns" to legalConcerns
+)
+
+private fun Map<*, *>.toDomain(): ProfilingSnapshot = ProfilingSnapshot(
+    businessIdea = this["businessIdea"] as? String ?: this["business_idea"] as? String,
+    businessSector = this["businessSector"] as? String ?: this["business_sector"] as? String,
+    preferredCompanyType = this["preferredCompanyType"] as? String ?: this["preferred_company_type"] as? String,
+    experienceLevel = this["experienceLevel"] as? String ?: this["experience_level"] as? String,
+    fundingNeed = this["fundingNeed"] as? String ?: this["funding_need"] as? String,
+    legalConcerns = (this["legalConcerns"] as? List<*>)?.mapNotNull { it as? String }
+        ?: (this["legal_concerns"] as? List<*>)?.mapNotNull { it as? String }
+        ?: emptyList()
+)
