@@ -37,16 +37,8 @@ kotlin {
         commonMain.dependencies {
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
-            implementation(libs.ktor.client.core)
-            implementation(libs.ktor.client.content.negotiation)
-            implementation(libs.ktor.client.serialization)
-            implementation(libs.ktor.client.websockets)
-            implementation(libs.ktor.client.logging)
             implementation(libs.koin.core)
             implementation(libs.androidx.lifecycle.viewmodel)
-        }
-        androidMain.dependencies {
-            implementation(libs.ktor.client.android)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
