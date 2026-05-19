@@ -1,18 +1,19 @@
-package com.anlarsinsoftware.girisimkolay.roadmap.data
+package com.anlarsinsoftware.girisimkolay.roadmap.data.repository
 
+import com.anlarsinsoftware.girisimkolay.auth.domain.repository.AuthRepository
 import com.anlarsinsoftware.girisimkolay.chat.domain.repository.ChatRepository
-import com.anlarsinsoftware.girisimkolay.core.domain.BearerTokenProvider
 import com.anlarsinsoftware.girisimkolay.core.data.MemoryCache
+import com.anlarsinsoftware.girisimkolay.core.domain.BearerTokenProvider
 import com.anlarsinsoftware.girisimkolay.core.domain.Clock
 import com.anlarsinsoftware.girisimkolay.core.domain.Logger
 import com.anlarsinsoftware.girisimkolay.core.domain.Result
 import com.anlarsinsoftware.girisimkolay.roadmap.data.dto.GenerateReportRequest
 import com.anlarsinsoftware.girisimkolay.roadmap.data.dto.RoadmapReportDto
+import com.anlarsinsoftware.girisimkolay.roadmap.data.source.RoadmapLocalStore
 import com.anlarsinsoftware.girisimkolay.roadmap.domain.entity.ApprovalStatus
 import com.anlarsinsoftware.girisimkolay.roadmap.domain.entity.RoadmapReport
 import com.anlarsinsoftware.girisimkolay.roadmap.domain.entity.RoadmapStep
 import com.anlarsinsoftware.girisimkolay.roadmap.domain.repository.RoadmapRepository
-import com.google.firebase.auth.FirebaseAuth
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -27,7 +28,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flowOf
 
 class LiveRoadmapRepository(
-    private val auth: FirebaseAuth,
+    private val authRepository: AuthRepository,
     private val httpClient: HttpClient,
     private val baseUrl: String,
     private val chatRepository: ChatRepository,
@@ -74,7 +75,7 @@ class LiveRoadmapRepository(
     }
 
     override suspend fun generateRoadmapReport(): Result<RoadmapReport> {
-        auth.currentUser?.uid
+        authRepository.currentUserId()
             ?: return Result.Error(message = "Rapor üretmek için giriş yapmalısınız.", code = "unauthenticated")
         val sessionId = chatRepository.currentActiveSessionId()
             ?: return Result.Error(message = "Önce bir AI sohbet oturumu başlatın.", code = "missing_session")
@@ -102,7 +103,7 @@ class LiveRoadmapRepository(
     }
 
     override suspend fun sendToExpert(): Result<ApprovalStatus> {
-        auth.currentUser?.uid
+        authRepository.currentUserId()
             ?: return Result.Error(message = "Onay göndermek için giriş yapmalısınız.", code = "unauthenticated")
         val currentReport = latestReportState.value
             ?: return Result.Error(message = "Önce rapor üretmelisiniz.", code = "missing_report")
@@ -114,7 +115,7 @@ class LiveRoadmapRepository(
         return Result.Success(ApprovalStatus.SENT)
     }
 
-    private suspend fun persistReport(report: RoadmapReport) {
+    private fun persistReport(report: RoadmapReport) {
         reportCache.put(report.id, report)
         roadmapLocalStore.saveLatestReportId(report.id)
         latestReportState.value = report
