@@ -66,6 +66,16 @@ type Citation = {
   sourceUrl?: string | null;
 };
 
+type ChatMode = "NORMAL" | "ROADMAP" | "DEEP_RESEARCH";
+
+type ChatLogContext = {
+  uid: string;
+  sessionId: string;
+  mode: ChatMode;
+  retrievedCount: number;
+  confidence: number;
+};
+
 type KnowledgeDocument = {
   id: string;
   sourceName: string;
@@ -307,6 +317,13 @@ const TURKISH_STOPWORDS = new Set([
   "tüm", "bütün", "bazı", "hiçbir", "birçok", "birkaç"
 ]);
 
+function parseChatMode(value?: string | null): ChatMode {
+  if (value === "ROADMAP" || value === "DEEP_RESEARCH" || value === "NORMAL") {
+    return value;
+  }
+  return "NORMAL";
+}
+
 function tokenize(text: string): string[] {
   return text
     .toLocaleLowerCase("tr-TR")
@@ -451,9 +468,18 @@ function inferLegalConcerns(text: string): string[] {
   return concerns;
 }
 
-function buildNextActions(profile: ProfilingSnapshot, query: string): string[] {
+function buildNextActions(profile: ProfilingSnapshot, query: string, mode: ChatMode = "NORMAL"): string[] {
   const normalized = query.toLocaleLowerCase("tr-TR");
   const actions: string[] = [];
+
+  if (mode === "ROADMAP") {
+    actions.push("İş fikrinize göre şirket tipi ve vergi yükümlülüklerini netleştirin");
+    actions.push("Kuruluş öncesi mali müşavir görüşmesi planlayın");
+  }
+  if (mode === "DEEP_RESEARCH") {
+    actions.push("Kaynak bağlantılarını açıp güncel metni kontrol edin");
+    actions.push("Belgedeki tarih ve kapsam bilgilerini kendi durumunuzla karşılaştırın");
+  }
 
   if (normalized.includes("kosgeb") || normalized.includes("hibe") || normalized.includes("destek")) {
     actions.push("KOSGEB'e online kayıt yapın ve Girişimcilik Eğitimi tarihlerini kontrol edin");
@@ -482,15 +508,45 @@ function buildNextActions(profile: ProfilingSnapshot, query: string): string[] {
   return [...new Set(actions)].slice(0, 3);
 }
 
+function modeInstruction(mode: ChatMode): string {
+  if (mode === "DEEP_RESEARCH") {
+    return [
+      "MOD: Derin Tarama.",
+      "Öncelik, kaynakların ne söylediğini dikkatli ve temkinli özetlemektir.",
+      "Belge dışı kesin cevap verme; kanıt zayıfsa bunu açıkça söyle.",
+      "Cevap formatı: Kısa bulgu, kaynaklara göre değerlendirme, kontrol edilmesi gereken noktalar."
+    ].join("\n");
+  }
+  if (mode === "ROADMAP") {
+    return [
+      "MOD: Yol Haritası.",
+      "Kullanıcının amacına göre uygulanabilir, resmi kaynaklarla uyumlu bir plan üret.",
+      "Cevabı şu başlıklarla ver: Kısa Değerlendirme, Adım Adım Yol Haritası, Hazırlanacak Belgeler, Dikkat Edilecek Noktalar, Sonraki En Mantıklı Adım.",
+      "Yasal kesinlik iddia etme; kritik vergi ve şirket kuruluşu konularında SMMM doğrulaması öner."
+    ].join("\n");
+  }
+  return [
+    "MOD: Normal.",
+    "Kullanıcının sorusuna doğrudan, pratik ve girişimci odaklı cevap ver.",
+    "Cevap formatı doğal olsun: kısa cevap, önemli noktalar, önerilen sonraki adım.",
+    "Kullanıcıyı sadece belge okumaya bırakma; kaynaklara dayalı açıklama yap."
+  ].join("\n");
+}
+
 async function generateAnswer(
   query: string,
   citations: Citation[],
   profile: ProfilingSnapshot,
-  insufficientEvidence: boolean
+  insufficientEvidence: boolean,
+  mode: ChatMode,
+  logContext: ChatLogContext
 ): Promise<string> {
   const apiKey = GEMINI_API_KEY.value();
   if (!apiKey) {
-    console.error("[Chat] Gemini API anahtarı bulunamadı. Fallback cevap dönülüyor.");
+    console.error("[Chat] Gemini API anahtarı bulunamadı. Fallback cevap dönülüyor.", {
+      ...logContext,
+      failureType: "missing_secret"
+    });
     return fallbackAnswer(query, citations);
   }
 
@@ -518,6 +574,8 @@ async function generateAnswer(
     const prompt = [
       ...contextLines,
       "",
+      modeInstruction(mode),
+      "",
       `Kullanıcı sorusu: ${query}`,
       `Kullanıcı profili: ${JSON.stringify(profile)}`,
       evidenceNote
@@ -533,12 +591,19 @@ async function generateAnswer(
 
     const generatedText = response.text?.trim();
     if (!generatedText) {
-      console.error("[Chat] Gemini boş cevap döndürdü. Fallback cevap dönülüyor.");
+      console.error("[Chat] Gemini boş cevap döndürdü. Fallback cevap dönülüyor.", {
+        ...logContext,
+        failureType: "empty_response"
+      });
       return fallbackAnswer(query, citations);
     }
     return generatedText;
   } catch (error) {
-    console.error("[Chat] Gemini cevap üretimi başarısız.", error);
+    console.error("[Chat] Gemini cevap üretimi başarısız.", {
+      ...logContext,
+      failureType: "generation_failed",
+      error
+    });
     return fallbackAnswer(query, citations);
   }
 }
@@ -641,10 +706,12 @@ export const sendChatMessage = onCall(
       sessionId?: string | null;
       text?: string;
       clientRequestId?: string;
+      mode?: string | null;
     };
 
     const text = data.text?.trim();
     const clientRequestId = data.clientRequestId?.trim();
+    const mode = parseChatMode(data.mode);
     if (!text || !clientRequestId) {
       throw new HttpsError("invalid-argument", "Metin ve istek kimliği gerekli.");
     }
@@ -668,6 +735,7 @@ export const sendChatMessage = onCall(
         profileDelta: payload.profileDelta ?? null,
         confidence: payload.confidence ?? 0,
         nextActions: payload.nextActions ?? [],
+        mode: payload.mode ?? mode,
         insufficientEvidence: (payload.confidence ?? 0) < 0.05
       };
     }
@@ -697,15 +765,22 @@ export const sendChatMessage = onCall(
       belgePuanlari: retrieved.map((d) => ({ id: d.id, puan: d.score.toFixed(4) })),
       maxPuan: maxScore.toFixed(4),
       ortPuan: avgConfidence,
-      yetersizKanit: insufficientEvidence
+      yetersizKanit: insufficientEvidence,
+      mode
     });
 
     // ── Profil ve Sonraki Adımlar ────────────────────────────────────────────
     const profileDelta = buildProfileSnapshot(text, null);
-    const nextActions = buildNextActions(profileDelta, text);
+    const nextActions = buildNextActions(profileDelta, text, mode);
 
     // ── Gemini Cevap Üretimi ─────────────────────────────────────────────────
-    const answer = await generateAnswer(text, citations, profileDelta, insufficientEvidence);
+    const answer = await generateAnswer(text, citations, profileDelta, insufficientEvidence, mode, {
+      uid: uid.slice(0, 8),
+      sessionId,
+      mode,
+      retrievedCount: retrieved.length,
+      confidence: avgConfidence
+    });
 
     // ── Firestore Yazma ──────────────────────────────────────────────────────
     await sessionRef.set(
@@ -733,7 +808,8 @@ export const sendChatMessage = onCall(
       confidence: null,
       nextActions: [],
       requestId: clientRequestId,
-      role: "user"
+      role: "user",
+      mode
     });
 
     const aiMessage = {
@@ -747,7 +823,8 @@ export const sendChatMessage = onCall(
       confidence: avgConfidence,
       nextActions,
       requestId: clientRequestId,
-      role: "assistant"
+      role: "assistant",
+      mode
     };
     await aiMessageRef.set(aiMessage);
     await sessionRef.set(
@@ -767,6 +844,7 @@ export const sendChatMessage = onCall(
       profileDelta,
       confidence: avgConfidence,
       nextActions,
+      mode,
       insufficientEvidence
     };
   }
@@ -805,7 +883,7 @@ export const generateRoadmapReport = onCall(
     const latestProfileSnapshot = sessionSnapshot.data()?.latestProfileSnapshot ?? null;
     const lastUserMessage = messages.filter((m) => m.isFromUser).at(-1)?.text ?? "";
     const nextActions = latestProfileSnapshot
-      ? buildNextActions(latestProfileSnapshot as ProfilingSnapshot, lastUserMessage)
+      ? buildNextActions(latestProfileSnapshot as ProfilingSnapshot, lastUserMessage, "ROADMAP")
       : ["Şirket tipinizi kesinleştirin", "Vergi ve SGK yükümlülüklerinizi gözden geçirin"];
     const pdfBytes = await buildPdf("Girişim Hazırlık Raporu", summary, nextActions, messages);
 
