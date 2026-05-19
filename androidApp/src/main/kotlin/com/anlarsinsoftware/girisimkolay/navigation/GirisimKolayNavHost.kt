@@ -101,7 +101,16 @@ fun MainScreen() {
                     )
                 }
             }
-            composable(Screen.Chat.route)      { MainScaffold(navController) { AIProfileChatScreen() } }
+            composable(Screen.Chat.route) {
+                MainScaffold(navController) {
+                    AIProfileChatScreen(
+                        onNavigateBack = { navController.popBackStack() },
+                        onNavigateToNotifications = { navController.navigate("notifications") },
+                        onNavigateToRoadmap = { navController.navigate(Screen.Roadmap.route) },
+                        onAskExpert = { category -> navController.navigate("consult?category=$category") }
+                    )
+                }
+            }
             composable(Screen.Community.route) {
                 MainScaffold(navController) {
                     CommunityHubScreen(

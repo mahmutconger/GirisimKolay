@@ -1,6 +1,7 @@
 package com.anlarsinsoftware.girisimkolay.chat.data.repository
 
 import com.anlarsinsoftware.girisimkolay.chat.domain.entity.ChatMessage
+import com.anlarsinsoftware.girisimkolay.chat.domain.entity.ChatMode
 import com.anlarsinsoftware.girisimkolay.chat.domain.entity.Citation
 import com.anlarsinsoftware.girisimkolay.chat.domain.repository.ChatRepository
 import com.anlarsinsoftware.girisimkolay.core.domain.Clock
@@ -43,26 +44,27 @@ class MockChatRepository(
     override suspend fun refreshChatHistory(): Result<List<ChatMessage>> =
         Result.Success(_messages.value)
 
-    override suspend fun sendMessage(text: String): Result<ChatMessage> {
+    override suspend fun sendMessage(text: String, mode: ChatMode): Result<ChatMessage> {
         val userMessage = ChatMessage(
             id = idProvider.randomId(),
             sessionId = sessionId.value,
             text = text,
             isFromUser = true,
-            timestamp = clock.nowMillis()
+            timestamp = clock.nowMillis(),
+            mode = mode
         )
         _messages.update { it + userMessage }
 
-        val aiMessage = simulateAiResponse(text)
+        val aiMessage = simulateAiResponse(text, mode)
         return Result.Success(aiMessage)
     }
 
     override fun getTypingStatus(): Flow<Boolean> = _isTyping.asStateFlow()
 
-    private suspend fun simulateAiResponse(userText: String): ChatMessage {
+    private suspend fun simulateAiResponse(userText: String, mode: ChatMode): ChatMessage {
         _isTyping.value = true
         delay(1500)
-        
+
         val (textReply, nextActions, citations) = when {
             userText.contains("el sanatları", ignoreCase = true) || userText.contains("kosgeb", ignoreCase = true) -> {
                 Triple(
@@ -94,7 +96,7 @@ class MockChatRepository(
             }
             else -> {
                 Triple(
-                    "Anladım. İhtiyacınıza yönelik yol haritasını oluşturuyorum. Bu konuda mevzuat gereği şahıs şirketi kurmanız avantajlı olabilir.",
+                    mockResponseFor(mode),
                     listOf("Şirket tipi seçimini doğrulayın", "Vergi yükümlülüklerini kontrol edin"),
                     listOf(
                         Citation(
@@ -114,11 +116,22 @@ class MockChatRepository(
             isFromUser = false,
             timestamp = clock.nowMillis(),
             citations = citations,
-            nextActions = nextActions
+            nextActions = nextActions,
+            mode = mode
         )
         
         _isTyping.value = false
         _messages.update { it + aiMessage }
         return aiMessage
     }
+
+    private fun mockResponseFor(mode: ChatMode): String =
+        when (mode) {
+            ChatMode.NORMAL ->
+                "Kısa cevap: Başlangıç aşamasında düşük maliyet ve hızlı kurulum istiyorsanız şahıs şirketi çoğu girişimci için daha pratik olabilir. Yine de gelir beklentiniz, ortaklık yapınız ve risk seviyeniz netleşmeden kesin karar vermeyin."
+            ChatMode.ROADMAP ->
+                "Kısa Değerlendirme\nŞirket kurulumunda önce faaliyet alanınızı ve şirket tipinizi netleştirmeniz gerekir.\n\nAdım Adım Yol Haritası\n1. Faaliyet kodunuzu ve satış kanalınızı belirleyin.\n2. Şirket tipini seçin.\n3. Vergi dairesi ve e-belge süreçlerini tamamlayın.\n4. Banka, ödeme altyapısı ve fatura süreçlerini hazırlayın.\n\nSonraki En Mantıklı Adım\nBir SMMM ile şirket tipi seçimini doğrulayın."
+            ChatMode.DEEP_RESEARCH ->
+                "Bu konuda güvenli ilerlemek için önce ilgili resmi kaynakları kontrol etmek gerekir. Elimdeki örnek kaynak, şahıs şirketinin düşük başlangıç maliyeti açısından avantajlı olabileceğini gösteriyor; ancak kesin karar için güncel mevzuat ve uzman teyidi gerekir."
+        }
 }
