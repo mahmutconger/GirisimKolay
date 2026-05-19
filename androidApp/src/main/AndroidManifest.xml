@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Required for Ktor HTTP calls -->
+    <!-- Required for Firebase SDK and general network access -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <!-- Allows HTTP (non-TLS) connections to local dev backend on 10.0.2.2 -->
+    <!-- Used to react to emulator and connectivity state changes -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application

@@ -18,7 +18,13 @@ captures
 **/xcshareddata/WorkspaceSettings.xcsettings
 node_modules/
 .firebaserc
+functions/lib/
+firebase-debug.log
+firestore-debug.log
 
 # Firebase debug logs
 firebase-debug.log
 database-debug.log
+/androidApp/google-services.json
+/iosApp/iosApp/GoogleService-Info.plist
+/iosApp/GoogleService-Info.plist

@@ -22,6 +22,8 @@ Use the run configurations provided by the run widget in your IDE's toolbar. You
 
 - Android app: `./gradlew :androidApp:assembleDebug`
 - iOS app: open the [/iosApp](./iosApp) directory in Xcode and run it from there.
+- Firebase emulator stack: `make dev`
+- Firebase-native yayına alma rehberi: [docs/firebase-native-release-guide.md](./docs/firebase-native-release-guide.md)
 
 ### Running tests
 

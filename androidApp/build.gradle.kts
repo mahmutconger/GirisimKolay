@@ -5,8 +5,8 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     // Firebase
-    alias(libs.plugins.google.services)
-    alias(libs.plugins.firebase.crashlytics.plugin)
+    // alias(libs.plugins.google.services)
+    // alias(libs.plugins.firebase.crashlytics.plugin)
 }
 
 kotlin {
@@ -43,7 +43,6 @@ dependencies {
     implementation(libs.firebase.analytics)
 
     implementation(libs.compose.uiToolingPreview)
-    implementation(libs.coil)
     debugImplementation(libs.compose.uiTooling)
 }
 

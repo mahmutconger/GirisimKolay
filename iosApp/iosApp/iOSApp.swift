@@ -2,6 +2,8 @@ import SwiftUI
 import FirebaseCore
 import FirebaseAuth
 import FirebaseFirestore
+import FirebaseFunctions
+import FirebaseStorage
 import UserNotifications
 // import SharedLogic  // Uncomment after KMP xcframework is linked in Xcode
 
@@ -19,6 +21,8 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
            useEmulator.uppercased() == "YES" {
             Auth.auth().useEmulator(withHost: "127.0.0.1", port: 9099)
             Firestore.firestore().useEmulator(withHost: "127.0.0.1", port: 8080)
+            Functions.functions(region: "europe-west1").useEmulator(withHost: "127.0.0.1", port: 5001)
+            Storage.storage().useEmulator(withHost: "127.0.0.1", port: 9199)
         }
         
         // 2. Initialize Koin (Shared KMP Dependency Injection)
